@@ -19,7 +19,7 @@ prompter = dict(
 data = dict(
     name='pannuke321',
     num_classes=5,
-    batch_size_per_gpu=64,
+    batch_size_per_gpu=16,
     num_workers=8,
     train=dict(transform=[
         dict(type='RandomGridShuffle', grid=(4, 4), p=0.5),
