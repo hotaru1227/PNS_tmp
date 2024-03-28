@@ -3,7 +3,7 @@ import wandb
 import math
 import pandas as pd
 import torch
-torch.cuda.set_device(3)
+torch.cuda.set_device(4)
 import torch.nn.functional as F
 from scipy.io import savemat
 from mmengine.config import Config

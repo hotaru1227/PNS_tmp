@@ -5,8 +5,9 @@
 *.txt
 __pycache__/
 checkpoint/
-prompter/datasets
-segmentor/datasets
+data/
+datasets/
+
 segmentor/prompts
 segmentor/pretrained
 segmentor/checkpoint

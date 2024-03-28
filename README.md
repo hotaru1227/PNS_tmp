@@ -36,7 +36,7 @@
    ```shell
    cd segmentor
    torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17_b/latest.pth --eval --config cpm17_b.py
-   python main.py --resume checkpoint/cpm17_b/latest.pth --eval --config cpm17_b.py
+   python main.py --resume checkpoint/cpm17/latest.pth --eval --config cpm17_b.py
    python main.py --resume checkpoint/pannuke321_b/latest.pth --eval --config pannuke321_b.py
 
    ```
