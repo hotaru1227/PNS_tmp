@@ -5,10 +5,13 @@ from utils import *
 from mmengine.config import Config
 from dataset import DataFolder
 from criterion import build_criterion
-from models.dpa_p2pnet import build_model
+from models.dpa_p2pnet import build_model 
 from engine import train_one_epoch, evaluate
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
+torch.cuda.set_device(3)
+# os.environ["CUDA_VISIBLE_DEVICES"] = "5,6"
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 def parse_args():
@@ -35,7 +38,7 @@ def parse_args():
     parser.add_argument("--device", default="cuda", help="device to use for training / testing")
     parser.add_argument("--print-freq", default=5, type=int, help="print frequency")
     parser.add_argument("--use-wandb", action='store_true', help='use wandb for logging')
-    parser.add_argument('--epochs', default=200, type=int, help='number of epochs.')
+    parser.add_argument('--epochs', default=300, type=int, help='number of epochs.')
     parser.add_argument('--warmup_epochs', default=5, type=int, help='number of warmup epochs.')
     parser.add_argument('--clip-grad', type=float, default=0.1,
                         help='Clip gradient norm (default: 0.1)')
@@ -71,7 +74,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    init_distributed_mode(args)
+    init_distributed_mode(args) 
     set_seed(args)
 
     cfg = Config.fromfile(f'config/{args.config}')
@@ -194,7 +197,7 @@ def main():
                 "epoch": epoch,
                 "args": args
             }
-
+            print("当前f1:",max_cls_f1)
             if model_ema:
                 checkpoint["model_ema"] = model_ema.module.state_dict()
 
@@ -207,7 +210,7 @@ def main():
             )
 
         try:
-            if epoch >= args.start_eval:
+            if epoch >= args.start_epoch:
                 metrics, metrics_string = evaluate(
                     cfg,
                     model_ema or model,

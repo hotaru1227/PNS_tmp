@@ -38,7 +38,16 @@ transform = A.Compose([
 
 def process_files(files):
     for file in tqdm(files):
-        img = io.imread(f'../segmentor/{file}')[..., :3]
+        # 发现npy文件保存的有问题，图像的拓展名写成了mat
+        # 分割文件名和扩展名
+        filename, extension = os.path.splitext(file)
+        
+        # 定义新的扩展名
+        new_extension = '.png'  # 修改为你想要的新扩展名
+        
+        # 构造新的文件名
+        new_file = filename + new_extension
+        img = io.imread(f'../segmentor/{new_file}')[..., :3]
 
         image = transform(image=img)['image'].unsqueeze(0).to(device)
 
@@ -53,7 +62,7 @@ def process_files(files):
         save_content = np.concatenate([points, classes[:, None]], axis=-1)
 
         np.save(
-            f'../segmentor/prompts/{dataset}/{file.split("/")[-1][:-4]}',
+            f'../segmentor/prompts/{dataset}/{new_file.split("/")[-1][:-4]}',
             save_content
         )
 

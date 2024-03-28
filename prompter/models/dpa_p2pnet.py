@@ -118,14 +118,14 @@ class DPAP2PNet(nn.Module):
 
     def forward(self,
                 images):
-        # extract features
-        (feats, feats1), proposals = self.backbone(images), self.get_aps(images)
+        # extract features 我感觉就在这。。尺寸截图了 b c h w
+        (feats, feats1), proposals = self.backbone(images), self.get_aps(images) 
 
         feat_sizes = [torch.tensor(feat.shape[:1:-1], dtype=torch.float, device=proposals.device) for feat in feats]
 
         # DPP
-        grid = (2.0 * proposals / self.strides[0] / feat_sizes[0] - 1.0)
-        roi_features = F.grid_sample(feats[0], grid, mode='bilinear', align_corners=True)
+        grid = (2.0 * proposals / self.strides[0] / feat_sizes[0] - 1.0) #跟proposal长得一样的梯度
+        roi_features = F.grid_sample(feats[0], grid, mode='bilinear', align_corners=True) #torch.Size([8, 32, 32, 2])
         deltas2deform = self.deform_layer(roi_features.permute(0, 2, 3, 1))
         deformed_proposals = proposals + deltas2deform
 
@@ -134,10 +134,10 @@ class DPAP2PNet(nn.Module):
         for i in range(self.num_levels):
             grid = (2.0 * deformed_proposals / self.strides[i] / feat_sizes[i] - 1.0)
             roi_features.append(F.grid_sample(feats[i], grid, mode='bilinear', align_corners=True))
-        roi_features = torch.cat(roi_features, 1)
+        roi_features = torch.cat(roi_features, 1)   #torch.Size([8, 1024, 32, 32])
 
         roi_features = self.conv(roi_features).permute(0, 2, 3, 1)
-        deltas2refine = self.reg_head(roi_features)
+        deltas2refine = self.reg_head(roi_features)  #所以最后传给mlp的是这个
         pred_coords = deformed_proposals + deltas2refine
 
         pred_logits = self.cls_head(roi_features)
@@ -148,7 +148,7 @@ class DPAP2PNet(nn.Module):
             'pred_masks': F.interpolate(
                 self.mask_head(feats1), size=images.shape[2:], mode='bilinear', align_corners=True)
         }
-
+        # 这里存点东西吧，按照图像文件名存特征
         return output
 
 
@@ -165,3 +165,4 @@ def build_model(cfg):
     )
 
     return model
+ 

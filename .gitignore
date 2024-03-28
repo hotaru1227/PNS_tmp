@@ -2,8 +2,9 @@
 *.csv
 *.npy
 *.png
+*.txt
 __pycache__/
-
+checkpoint/
 prompter/datasets
 segmentor/datasets
 segmentor/prompts
