@@ -91,20 +91,4 @@
 | Segmentor-H | [OneDrive](https://westlakeu-my.sharepoint.com/:u:/g/personal/shuizhongyi_westlake_edu_cn/EYCdndKjn4NJv3Qvebo4YsQBrUhU_Uu2tjtBucJH2SMdNQ?e=NThF4d) | [OneDrive](https://westlakeu-my.sharepoint.com/:u:/g/personal/shuizhongyi_westlake_edu_cn/Ebg9v0HaOFZIpyda-JKNST8B2AmnGdhgYQqjdLHYm4j5LA?e=ibANRv) | [OneDrive](https://westlakeu-my.sharepoint.com/:u:/g/personal/shuizhongyi_westlake_edu_cn/EZjmiotww1hHtF83WwJTVz0BAmfDNkuSuGbUXkthP3yvDQ?e=N45aU3) | [OneDrive](https://westlakeu-my.sharepoint.com/:u:/g/personal/shuizhongyi_westlake_edu_cn/EQG3IMH1OARPj67mapQoakYBjlkMzAKzQjYxPn425JiVeQ?e=6XrKmT) | [OneDrive](https://westlakeu-my.sharepoint.com/:u:/g/personal/shuizhongyi_westlake_edu_cn/EVj-vCQh5MVPqIT8ggkSJGsBeWv_MsrO9Ci3Lr7wuewW2A?e=qsa0Gd) |
 
 
-## 一些原作者的备注 👇
-## Contact
-If you have any questions or concerns, feel free to report issues or directly contact us (Zhongyi Shui shuizhongyi@westlake.edu.cn).
-
-## Citation
-
-If you find this code useful for your research, please cite us using the following BibTeX entry.
-
-```bibtex
-@article{shui2023unleashing,
-  title={Unleashing the Power of Prompt-driven Nucleus Instance Segmentation},
-  author={Shui, Zhongyi and Zhang, Yunlong and Yao, Kai and Zhu, Chenglu and Sun, Yuxuan and Yang, Lin},
-  journal={arXiv preprint arXiv:2311.15939},
-  year={2023}
-}
-```
 
