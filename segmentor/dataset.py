@@ -48,7 +48,7 @@ class DataFolder(Dataset):
 
     def __getitem__(self, idx):
         img_path = self.files[idx]
-
+        # print(img_path)
         if self.dataset == 'kumar':
             mask_path = f'{img_path[:-4].replace("images", "labels")}.npy'
             sub_paths = mask_path.split('/')
@@ -56,6 +56,7 @@ class DataFolder(Dataset):
             mask_path = '/'.join(sub_paths)
         elif self.dataset == 'cpm17':
             mask_path = f'{img_path[:-4].replace("Images", "Labels")}.mat'
+            img_path = f'{img_path[:-4]}.png'
         else:
             mask_path = f'{img_path[:-4].replace("Images", "Masks")}.npy'
 

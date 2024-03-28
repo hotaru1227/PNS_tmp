@@ -2,7 +2,10 @@ import sys
 import wandb
 import math
 import pandas as pd
+import torch
+torch.cuda.set_device(3)
 import torch.nn.functional as F
+from scipy.io import savemat
 from mmengine.config import Config
 from criterion import build_criterion
 
@@ -16,7 +19,9 @@ from torchvision.ops.boxes import batched_nms
 from stats_utils import (
     remap_label,
     get_fast_pq,
-    get_fast_aji
+    get_fast_aji,
+    get_dice_1,
+
 )
 
 import argparse
@@ -31,9 +36,9 @@ def parse_args():
     parser.add_argument("--overlap", default=64, type=int, help="overlapping pixels")
 
     parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="start epoch")
-    parser.add_argument('--epochs', default=200, type=int)
+    parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument("--print-freq", default=10, type=int, help="print frequency")
-    parser.add_argument("--start-eval", default=60, type=int)
+    parser.add_argument("--start-eval", default=5, type=int)
 
     parser.add_argument('--output_dir', default='', type=str)
     parser.add_argument('--seed', default=42, type=int)
@@ -168,6 +173,7 @@ def main():
             cfg.data.post.iou_threshold,
             args.tta,
             device,
+            cfg.data,
         )
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -253,13 +259,13 @@ def train_on_epoch(
 
     for data_iter_step, (images, true_masks, prompt_points, prompt_labels, all_points, all_points_types, cell_nums) in (
             enumerate(metric_logger.log_every(train_dataloader, args.print_freq, header))):
-        images = images.to(device)
-        true_masks = true_masks.to(device)
+        images = images.to(device) #torch.Size([16, 3, 256, 256])
+        true_masks = true_masks.to(device) #torch.Size([256, 256])
 
-        prompt_points = prompt_points.to(device)
-        prompt_labels = prompt_labels.to(device)
+        prompt_points = prompt_points.to(device) #torch.Size([239, 1, 2])
+        prompt_labels = prompt_labels.to(device) #torch.Size([239, 1])
 
-        cell_nums = cell_nums.to(device)
+        cell_nums = cell_nums.to(device) #torch.Size([16])
 
         outputs = model(
             images,
@@ -310,6 +316,7 @@ def evaluate(
         iou_threshold,
         tta,
         device,
+        data_info,
 ):
     model.eval()
 
@@ -344,6 +351,10 @@ def evaluate(
     }
 
     nuclei_pq_scores = []  # image_id, category_id
+    nuclei_sq_scores = []
+    nuclei_dq_scores = []
+    nuclei_dice_scores = []
+    nuclei_aji_scores = []
     tissue_nuclei_pq_scores = [[] for _ in tissue_types]  # tissue_id, category_id
 
     binary_pq_scores = []  # image_id
@@ -351,8 +362,11 @@ def evaluate(
 
     binary_dq_scores = []
     binary_sq_scores = []
+    binary_aji_scores = []
+    binary_dice_scores = []
 
     aji_scores = []
+    dice_scores = []
 
     metric_logger = MetricLogger(delimiter="  ")
     header = f"Test:"
@@ -383,19 +397,33 @@ def evaluate(
         batch_inds = torch.repeat_interleave(torch.arange(images.shape[0]), cell_nums)
         if 'pannuke' in test_dataloader.dataset.dataset:
             if cell_nums.sum() > 0:
-                outputs = model(
+                outputs = model( #infer的第一个outputs
                     images,
                     prompt_points.to(device),
                     prompt_labels.to(device),
                     cell_nums.to(device)
                 )
+            
+            # output_folder = '/data/hotaru/my_projects/PromptNucSeg/segmentor/output/pannuke321_outputmat_test'  # 指定保存的文件夹路径
+            # # 获取文件名，并替换后缀为 .mat
+            # output_filename = test_dataloader.dataset.files[file_inds].split(".")[0].split("/")[-1] + '.mat'
+            # # 拼接完整的文件路径
+            # output_file_path = os.path.join(output_folder, output_filename)
+            # # 准备要保存的数据
+            # data_to_save = {
+            #     'pred_masks': outputs['pred_masks'].cpu().numpy(),
+            #     'pred_ious': outputs['pred_ious'].cpu().numpy(),
+            # }
+            # # 使用 savemat() 函数将数据保存为 .mat 文件
+            # savemat(output_file_path, data_to_save)
+
             model_time = time.time() - model_time
             metric_logger.update(model_time=model_time)
 
             for batch_ind, file_ind in enumerate(file_inds):
 
-                c_inst_map = np.zeros((num_classes, *inst_maps.shape[-2:]))
-                b_inst_map = np.zeros_like(inst_maps[0])
+                c_inst_map = np.zeros((num_classes, *inst_maps.shape[-2:])) #(5, 256, 256)
+                b_inst_map = np.zeros_like(inst_maps[0]) #(256, 256)
 
                 if cell_nums.sum() > 0:
 
@@ -407,11 +435,11 @@ def evaluate(
 
                     # Threshold masks and calculate boxes
                     mask_threshold = 0.0
-                    mask_data["masks"] = mask_data["masks"] > mask_threshold
-                    mask_data["boxes"] = batched_mask_to_box(mask_data["masks"])
-                    mask_data["rles"] = mask_to_rle_pytorch(mask_data["masks"])
+                    mask_data["masks"] = mask_data["masks"] > mask_threshold  #torch.Size([11, 256, 256])
+                    mask_data["boxes"] = batched_mask_to_box(mask_data["masks"]) #torch.Size([11, 4])
+                    mask_data["rles"] = mask_to_rle_pytorch(mask_data["masks"]) #size 掩码大小,count RLE编码
 
-                    if len(mask_data["masks"]) > 0:
+                    if len(mask_data["masks"]) > 0: #去重，分别把mask映射到class和binary
                         # Remove duplicates within this crop.
                         keep_by_nms = batched_nms(
                             mask_data["boxes"].float(),
@@ -419,7 +447,7 @@ def evaluate(
                             torch.zeros_like(mask_data["boxes"][:, 0]),  # apply cross categories
                             iou_threshold=iou_threshold
                         ).cpu().numpy()
-                        order = keep_by_nms[::-1]
+                        order = keep_by_nms[::-1] #根据box和iou获取了一个顺序？
 
                         mask_data["masks"] = mask_data["masks"].cpu().numpy()
                         for iid, ind in enumerate(order):
@@ -429,23 +457,55 @@ def evaluate(
                         for iid, ind in enumerate(order):
                             b_inst_map[mask_data['masks'][ind]] = iid + 1
 
-                if len(np.unique(inst_maps[batch_ind])) == 1:
+                    # output_folder = '/data/hotaru/my_projects/PromptNucSeg/segmentor/output/pannuke321_b_inst_map_test'  # 指定保存的文件夹路径
+                    # # 获取文件名，并替换后缀为 .mat
+                    # import matplotlib.pyplot as plt
+                    # # 可视化二值实例地图
+                    # plt.imshow(b_inst_map, cmap='gray')
+                    # plt.axis('off')  # 不显示坐标轴
+                    # output_filename = test_dataloader.dataset.files[file_inds].split(".")[0].split("/")[-1] + '.png' 
+                    # # 拼接完整的文件路径
+                    # output_file_path = os.path.join(output_folder, output_filename)
+                    # plt.savefig(output_file_path)  # 保存为图片文件
+                    
+                if len(np.unique(inst_maps[batch_ind])) == 1 or len(np.unique(b_inst_map)) == 1:
                     bpq_tmp = np.nan
                     bdq_tmp = np.nan
                     bsq_tmp = np.nan
+                    bdice_tmp = np.nan
+                    baji_tmp = np.nan
                 else:
                     [bdq_tmp, bsq_tmp, bpq_tmp], _ = get_fast_pq(
+                        remap_label(inst_maps[batch_ind]),  #true
+                        remap_label(b_inst_map)
+                    )
+                    bdice_tmp = get_dice_1(
+                        remap_label(inst_maps[batch_ind]),  #true
+                        remap_label(b_inst_map)
+                    )
+                    baji_tmp = get_fast_aji(
                         remap_label(inst_maps[batch_ind]),
                         remap_label(b_inst_map)
                     )
-
+                # 这里是不带类别的所有的指标，先搞这个 这里不append是单个image的，append完就算完了,但是是for循环结束才完的
+                #bqp_tmp是单张
+                #出了for循环 binary才存了所有图的结果，再算mean
                 binary_pq_scores.append(bpq_tmp)
-                tissue_binary_pq_scores[tissue_types[test_dataloader.dataset.types[file_ind]]].append(bpq_tmp)
+                binary_dq_scores.append(bdq_tmp)
+                binary_sq_scores.append(bsq_tmp)
+                binary_aji_scores.append(baji_tmp)
+                binary_dice_scores.append(bdice_tmp)
 
-                nuclei_type_pq = []
+                tissue_binary_pq_scores[tissue_types[test_dataloader.dataset.types[file_ind]]].append(bpq_tmp) #tissue的就先算了
+
+                # 单张图片5个类别（单张图片保存的应该是五个的平均吗？）
+                nuclei_type_pq = []  
                 nuclei_type_dq = []
                 nuclei_type_sq = []
-                for c in range(num_classes):
+                nuclei_type_dice = []
+                nuclei_type_aji = []
+
+                for c in range(num_classes):  # 5 class 按类别的inst_map score
                     pred_nuclei_instance_class = remap_label(
                         c_inst_map[c]
                     )
@@ -457,23 +517,47 @@ def evaluate(
                         mpq_tmp = np.nan
                         mdq_tmp = np.nan
                         msq_tmp = np.nan
+                        mdice_tmp = np.nan
+                        maji_tmp = np.nan
                     else:
                         [mdq_tmp, msq_tmp, mpq_tmp], _ = get_fast_pq(
                             pred_nuclei_instance_class,
                             target_nuclei_instance_class
                         )
+                        mdice_tmp = get_dice_1(
+                            pred_nuclei_instance_class,
+                            target_nuclei_instance_class
+                        )
+                        maji_tmp = get_fast_aji(
+                            pred_nuclei_instance_class,
+                            target_nuclei_instance_class
+                        )
+                    # 这里按照类别计算了所有的指标，照葫芦画瓢按类别计算一下dice和aji，然后看看pq和dq也给他传过去
                     nuclei_type_pq.append(mpq_tmp)
                     nuclei_type_dq.append(mdq_tmp)
                     nuclei_type_sq.append(msq_tmp)
-
+                    nuclei_type_aji.append(maji_tmp)
+                    nuclei_type_dice.append(mdice_tmp)
+                # 所有图像的五个类别值
                 nuclei_pq_scores.append(nuclei_type_pq)
+                nuclei_sq_scores.append(nuclei_type_sq)
+                nuclei_dq_scores.append(nuclei_type_dq)
+                nuclei_aji_scores.append(nuclei_type_aji)
+                nuclei_dice_scores.append(nuclei_type_dice)
+
+                # 要不全在这里算了然后存csv呢？ 但这个是一张图的结果 但按照这个逻辑就应该按图算指标然后算mean
                 tissue_nuclei_pq_scores[tissue_types[test_dataloader.dataset.types[file_ind]]].append(nuclei_type_pq)
 
                 excel_info.append(
-                    (test_dataloader.dataset.files[file_ind].split("/")[-1], bpq_tmp, np.nanmean(nuclei_pq_scores[-1]),
+                    (test_dataloader.dataset.files[file_ind].split("/")[-1],bdice_tmp,baji_tmp,bdq_tmp,bsq_tmp, bpq_tmp, 
+                     np.nanmean(nuclei_dice_scores[-1]),np.nanmean(nuclei_aji_scores[-1]),np.nanmean(nuclei_dq_scores[-1]),np.nanmean(nuclei_sq_scores[-1]),
+                     np.nanmean(nuclei_pq_scores[-1]),
                      len(np.unique(inst_maps[batch_ind])) - 1, cell_nums[batch_ind].item()))
+            
 
         else:  # applicable when the resolution of input image is larger than 256
+            # 确认一下哪个数据集会用这里
+            print("else!over 256")
             assert len(images) == 1, 'batch size must be 1'
 
             crop_boxes = crop_with_overlap(
@@ -582,17 +666,25 @@ def evaluate(
             for iid, ind in enumerate(order):
                 b_inst_map[all_masks[ind]] = iid + 1
 
-            if len(np.unique(inst_maps[0])) == 1:
+            if len(np.unique(inst_maps[0])) == 1 or len(b_inst_map)==1:
                 bpq_tmp = np.nan
                 bdq_tmp = np.nan
-                bsq_tmp = np.nan
+                bsq_tmp = np.nan 
             else:
                 [bdq_tmp, bsq_tmp, bpq_tmp], _ = get_fast_pq(
                     remap_label(inst_maps[0]),
                     remap_label(b_inst_map)
                 )
+                bdice_tmp = get_dice_1(
+                    remap_label(inst_maps[0]),
+                    remap_label(b_inst_map)
+                )
 
             aji_score = get_fast_aji(
+                remap_label(inst_maps[0]),
+                remap_label(b_inst_map)
+            )
+            dice_score = get_dice_1(
                 remap_label(inst_maps[0]),
                 remap_label(b_inst_map)
             )
@@ -602,6 +694,7 @@ def evaluate(
 
             binary_pq_scores.append(bpq_tmp)
             aji_scores.append(aji_score)
+            dice_scores.append(dice_score)
 
             excel_info.append(
                 (test_dataloader.dataset.files[file_inds[0]].split("/")[-1],
@@ -611,7 +704,18 @@ def evaluate(
                  cell_nums[batch_inds[0]].item())
             )
 
-    if 'pannuke' in test_dataloader.dataset.dataset:  # PanNuke
+    # 到这里循环完了所有的图↑
+    print("binary指标："+"*"*10)
+    # print("检查一下长度：",len(binary_aji_scores))
+    # print("检查一下形状：",binary_dice_scores.shape)
+    print("dice:",np.nanmean(binary_dice_scores))
+    print("aji:",np.nanmean(binary_aji_scores))
+    print("dq:",np.nanmean(binary_dq_scores))
+    print("sq:",np.nanmean(binary_sq_scores))
+    print("pq:",np.nanmean(binary_pq_scores))
+    print("检查一下长度：",len(binary_aji_scores))
+    print("*"*20)
+    if 'pannuke' in test_dataloader.dataset.dataset:  # PanNuke  tissue
 
         tissue_mpq_scores = []
         for tid, tissue_type in enumerate(tissue_types):
@@ -635,45 +739,72 @@ def evaluate(
         binary_pq_scores = np.concatenate(all_gather(binary_pq_scores))
 
         nuclei_pq_scores = np.asarray(nuclei_pq_scores)
-        print(np.nanmean(nuclei_pq_scores, axis=0))
+        print("values：",np.nanmean(nuclei_pq_scores, axis=0))
 
-        # global_mPQ = np.nanmean(np.nanmean(nuclei_pq_scores, axis=1))
-        #
-        # binary_pq_scores = np.asarray(binary_pq_scores)
-        # global_bPQ = np.nanmean(binary_pq_scores)
-
+        global_mPQ = np.nanmean(np.nanmean(nuclei_pq_scores, axis=1))
+        
+        binary_pq_scores = np.asarray(binary_pq_scores)
+        global_bPQ = np.nanmean(binary_pq_scores) #这个好像就是我print的东西，确实是 作者是发现这样计算会低吗？
+        try:
+            print("1检查一下tissue_bpq_scores形状：",len(tissue_bpq_scores))
+            print("2检查一下tissue_binary_pq_scores形状：",len(tissue_binary_pq_scores))
+            print("3检查一下tissue_binary_pq_scores[0]形状：",len(tissue_binary_pq_scores[0]))
+            
+        except:
+            print("ok fine")
+        try:
+            print("4检查一下concatenate形状：",len(np.concatenate(all_gather(tissue_binary_pq_scores[tid]))))
+        except:
+            print("ok fine")
+        try:
+            print("5检查一下concatenate形状：",np.concatenate(all_gather(tissue_binary_pq_scores[tid])).shape )
+        except:
+            print("ok fine")
         metrics = {
             'mPQ': tissue_mPQ,  # <---
             'bPQ': tissue_bPQ,
-            # 'global_bPQ': global_mPQ,
-            # 'global_mPQ': global_bPQ,
+            'global_bPQ': global_bPQ,
+            'global_mPQ': global_mPQ,
         }
 
     else:  # CPM-17 and Kumar
         aji_scores = np.concatenate(all_gather(aji_scores))
         AJI = np.nanmean(aji_scores)
+        
+        dice_scores = np.concatenate(all_gather(dice_scores))
+        DICE = np.nanmean(dice_scores)
 
         pq_scores = np.concatenate(all_gather(binary_pq_scores))
         PQ = np.nanmean(pq_scores)
 
+        dq_scores = np.concatenate(all_gather(binary_dq_scores))
+        DQ = np.nanmean(dq_scores)
+
+        sq_scores = np.concatenate(all_gather(binary_sq_scores))
+        SQ = np.nanmean(sq_scores)
+
         metrics = {
-            'AJI': AJI,
+            'DICE:': DICE,
+            'AJI:': AJI,
+            'DQ:' : DQ,
+            'SQ:' : SQ,
             'PQ': PQ
         }
 
     for k, v in metrics.items():
         print(f"{k}: {v}")
 
-    # gathered_excel_info = []
-    # for _ in all_gather(excel_info):
-    #     gathered_excel_info.extend(_)
+    gathered_excel_info = []
+    for _ in all_gather(excel_info):
+        gathered_excel_info.extend(_)
 
-    # if is_main_process():
-    #     pd.DataFrame(
-    #         data=gathered_excel_info,
-    #         columns=['Imagee Name', 'bPQ', 'mPQ', 'GT Num', 'PD Num']
-    #         # columns=['Imagee Name', 'PQ', 'AJI', 'GT Num', 'PD Num']
-    #     ).to_csv(f'{test_dataloader.dataset.dataset}.csv')
+    if is_main_process():
+        print("save!")
+        pd.DataFrame(
+            data=gathered_excel_info,
+            # columns=['Imagee Name', 'bDice', 'bAji','bdq', 'bsQ',  'bPQ', 'mDice', 'mAji','mDQ','mSQ','mPQ','GT Num', 'PD Num']
+            columns=['Imagee Name', 'PQ', 'AJI', 'GT Num', 'PD Num']
+        ).to_csv(f'{test_dataloader.dataset.dataset}.csv')
 
     return metrics
 

@@ -73,7 +73,7 @@ class Sam(nn.Module):
             only_det=False
     ):
         # image_embeddings, outputs = self.image_encoder(images)
-        image_embeddings = self.image_encoder(images)
+        image_embeddings = self.image_encoder(images) #torch.Size([16, 256, 16, 16])  #infer:1,256,16,16
 
         # if only_det:
         #     return outputs
@@ -83,19 +83,19 @@ class Sam(nn.Module):
 
         outputs = {}
         if prompt_points is not None:
-            sparse_embeddings, dense_embeddings = self.prompt_encoder(
-                points=(prompt_points, prompt_labels),
+            sparse_embeddings, dense_embeddings = self.prompt_encoder( #sparse torch.Size([239, 2, 256]) 
+                points=(prompt_points, prompt_labels),                 #dense  torch.Size([239, 256, 16, 16])
                 boxes=None,
                 masks=None,
             )
 
             low_res_masks, iou_predictions = self.mask_decoder(
             # low_res_masks, iou_predictions, cls_predictions = self.mask_decoder(
-                image_embeddings=image_embeddings,
-                image_pe=self.prompt_encoder.get_dense_pe(),
+                image_embeddings=image_embeddings,  #torch.Size([16, 256, 16, 16])
+                image_pe=self.prompt_encoder.get_dense_pe(), #torch.Size([1, 256, 16, 16])
                 sparse_prompt_embeddings=sparse_embeddings,
                 dense_prompt_embeddings=dense_embeddings,
-                cell_nums=cell_nums,
+                cell_nums=cell_nums, #torch.Size([16])
                 multimask_output=self.multimask
             )
 
