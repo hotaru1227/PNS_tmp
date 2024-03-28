@@ -156,11 +156,11 @@ class PromptEncoder(nn.Module):
             Bx(embed_dim)x(embed_H)x(embed_W)
         """
         bs = self._get_batch_size(points, boxes, masks)
-        sparse_embeddings = torch.empty((bs, 0, self.embed_dim), device=self._get_device())
+        sparse_embeddings = torch.empty((bs, 0, self.embed_dim), device=self._get_device()) #torch.Size([239, 0, 256])
         if points is not None:
             coords, labels = points
-            point_embeddings = self._embed_points(coords, labels, pad=(boxes is None))
-            sparse_embeddings = torch.cat([sparse_embeddings, point_embeddings], dim=1)
+            point_embeddings = self._embed_points(coords, labels, pad=(boxes is None)) #torch.Size([239, 2, 256])
+            sparse_embeddings = torch.cat([sparse_embeddings, point_embeddings], dim=1) #torch.Size([239, 2, 256])
         if boxes is not None:
             box_embeddings = self._embed_boxes(boxes)
             sparse_embeddings = torch.cat([sparse_embeddings, box_embeddings], dim=1)
@@ -168,11 +168,11 @@ class PromptEncoder(nn.Module):
         if masks is not None:
             dense_embeddings = self._embed_masks(masks)
         else:
-            dense_embeddings = self.no_mask_embed.weight.reshape(1, -1, 1, 1).expand(
+            dense_embeddings = self.no_mask_embed.weight.reshape(1, -1, 1, 1).expand(  #torch.Size([239, 256, 16, 16])
                 bs, -1, self.image_embedding_size[0], self.image_embedding_size[1]
             )
 
-        return sparse_embeddings, dense_embeddings
+        return sparse_embeddings, dense_embeddings 
 
 
 class PositionEmbeddingRandom(nn.Module):

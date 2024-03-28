@@ -2,8 +2,11 @@
 *.csv
 *.npy
 *.png
+__pycache__/
 
 prompter/datasets
 segmentor/datasets
 segmentor/prompts
 segmentor/pretrained
+segmentor/checkpoint
+segmentor/output
