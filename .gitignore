@@ -1,0 +1,7 @@
+*.out
+*.csv
+*.npy
+*.png
+
+prompter/datasets
+segmentor/datasets
