@@ -94,6 +94,15 @@ def main():
             collate_fn=test_collate_fn,
         )
     except FileNotFoundError:
+        #可以这么干吗？但是cpm不validation
+        val_dataset = DataFolder(cfg, mode='val')
+        val_dataloader = DataLoader(
+        test_dataset,
+        batch_size=1,
+        shuffle=False,
+        num_workers=cfg.data.num_workers,
+        collate_fn=test_collate_fn,
+    )
         pass
 
     test_dataset = DataFolder(cfg, mode='test')
@@ -110,7 +119,7 @@ def main():
     model = getattr(segment_anything, f"build_sam_vit_{cfg.segmentor.type[-1].lower()}")(cfg)
     model.to(device)
 
-    for param in model.prompt_encoder.parameters():
+    for param in model.prompt_encoder.parameters(): #是这样冻结的吗？
         param.requires_grad = False
 
     model_without_ddp = model
@@ -267,7 +276,7 @@ def train_on_epoch(
 
         cell_nums = cell_nums.to(device) #torch.Size([16])
 
-        outputs = model(
+        outputs = model(   #here
             images,
             prompt_points,
             prompt_labels,
