@@ -177,12 +177,12 @@ class Block(nn.Module):
 
     # def forward(self, x: torch.Tensor, c, deform_inputs1) -> torch.Tensor:
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        shortcut = x
-        x = self.norm1(x)
+        shortcut = x 
+        x = self.norm1(x)  # 16 16 16 768
         # Window partition
         if self.window_size > 0:
             H, W = x.shape[1], x.shape[2]
-            x, pad_hw = window_partition(x, self.window_size)
+            x, pad_hw = window_partition(x, self.window_size) # 64 14 14 768
 
         x = self.attn(x)
         # Reverse window partition
@@ -193,7 +193,7 @@ class Block(nn.Module):
 
         x = x + self.mlp(self.norm2(x))
 
-        return x
+        return x  # b h w c
 
 
 class Attention(nn.Module):

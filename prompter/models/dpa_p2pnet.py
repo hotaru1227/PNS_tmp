@@ -134,7 +134,8 @@ class DPAP2PNet(nn.Module):
         for i in range(self.num_levels):
             grid = (2.0 * deformed_proposals / self.strides[i] / feat_sizes[i] - 1.0)
             roi_features.append(F.grid_sample(feats[i], grid, mode='bilinear', align_corners=True))
-        roi_features = torch.cat(roi_features, 1)   #torch.Size([8, 1024, 32, 32])
+        roi_features = torch.cat(roi_features, 1)   #torch.Size([8, 1024, 32, 32]) 这里做的就是作者说的，把point放进去
+        #使用 bilinear 插值在特征图 feats[0] 上进行采样，获取感兴趣区域对应的特征。
 
         roi_features = self.conv(roi_features).permute(0, 2, 3, 1)
         deltas2refine = self.reg_head(roi_features)  #所以最后传给mlp的是这个
@@ -148,7 +149,7 @@ class DPAP2PNet(nn.Module):
             'pred_masks': F.interpolate(
                 self.mask_head(feats1), size=images.shape[2:], mode='bilinear', align_corners=True)
         }
-        # 这里存点东西吧，按照图像文件名存特征
+
         return output
 
 

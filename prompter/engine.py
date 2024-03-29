@@ -31,7 +31,7 @@ def train_one_epoch(
 
     for data_iter_step, (images, masks, points_list, labels_list) in enumerate(
             metric_logger.log_every(train_loader, args.print_freq, header)):
-        images = images.to(device)
+        images = images.to(device) # cpm:torch.Size([8, 3, 512, 512])   pannuke:torch.Size([16, 3, 256, 256])
         masks = masks.to(device)
 
         targets = {
@@ -43,7 +43,7 @@ def train_one_epoch(
 
         with torch.cuda.amp.autocast(enabled=scaler is not None):
             outputs = model(images)
-            # 表征就在这儿？这里的target是什么？
+            # 表征就在这儿？
             loss_dict = criterion(outputs, targets, epoch)
             losses = sum(loss for loss in loss_dict.values())
 
