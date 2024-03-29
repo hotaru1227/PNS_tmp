@@ -8,7 +8,7 @@ checkpoint/
 data/
 datasets/
 
-segmentor/prompts
+
 segmentor/pretrained
 segmentor/checkpoint
 segmentor/output
