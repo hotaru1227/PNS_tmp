@@ -120,20 +120,12 @@ class DPAP2PNet(nn.Module):
     def forward(self,
                 images):
 
-        print("调用sam")
         image_encoder = ImageEncoderViT()
         image_encoder = image_encoder.to('cuda')
         image_embeddings = image_encoder(images)
         # extract features 我感觉就在这。。尺寸截图了 b c h w
         (feats, feats1), proposals = self.backbone(images), self.get_aps(images) 
-        print("len feats",len(feats))
-        print("feats[0]",feats[0].shape)
-        print("feats[1]",feats[1].shape)
-        print("feats[2]",feats[2].shape)
         feats[2] = image_embeddings
-        print("image_embeddings",image_embeddings.shape)
-        # print("feats[3]",feats[3].shape)
-        print("更换feats[3]")
 
         feat_sizes = [torch.tensor(feat.shape[:1:-1], dtype=torch.float, device=proposals.device) for feat in feats]
         
