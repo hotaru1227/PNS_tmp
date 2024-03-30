@@ -22,8 +22,8 @@ def parse_args():
 #return inst_map,type_map,points,points_labels
 def load_dataset(dataset,file_name):
     if dataset == 'pannuke':
-        point_data = np.load("./prompts/pannuke321/"+file_name+".npy")
-        mask_data = np.load("./datasets/pannuke/Masks/"+file_name+".npy", allow_pickle=True).item()  # 加载npy文件并将字典转换为Python对象
+        point_data = np.load("/data/hotaru/my_projects/PNS_tmp/segmentor/prompts/pannuke321/"+file_name+".npy")
+        mask_data = np.load("/data/hotaru/my_projects/PNS_tmp/segmentor/datasets/pannuke/Masks/"+file_name+".npy", allow_pickle=True).item()  # 加载npy文件并将字典转换为Python对象
         inst_map = mask_data['inst_map']
         type_map = mask_data['type_map']
     elif dataset == 'cpm17':
@@ -153,14 +153,27 @@ def main():
 
 
     # 打印结果
+    print("gt总数：",data[0])
+    print("预测总数：",data[1])
     print("正确总数：",data[2])
     print("准确率：",data[2]/data[1])
     print("召回率：",data[2]/data[0])
+    print("--多检总数：",data[3]+data[4])
+    print("多检总数占比：",(data[3]+data[4])/data[8])
     print("背景多检：",data[3])
+    print("背景多检占比：",data[3]/(data[3]+data[4]))
     print("前景多检：",data[4])
+    print("前景多检占比：",data[4]/(data[3]+data[4]))
+
+    print("--漏检总数：",data[5]+data[6])
+    print("漏检总数占比：",(data[5]+data[6])/data[8])
     print("单独漏检：",data[5])
+    print("单独漏检占比：",data[5]/(data[5]+data[6]))
     print("粘连漏检：",data[6])
-    print("类别错误：",data[7])
+    print("粘连漏检占比：",data[6]/(data[5]+data[6]))
+
+    print("--类别错误：",data[7])
+    print("类别错误占比：",data[7]/data[8])
     print("错误总数：",data[8])     
 
       
