@@ -1,4 +1,5 @@
 import torch
+torch.cuda.set_device(6)
 from mmengine.config import Config
 from PIL import Image
 import albumentations as A
@@ -29,21 +30,29 @@ transform = A.Compose(transform_operations, p=1)
 transformed_data = transform(image=image_np)
 
 transformed_image = transformed_data['image']
-transformed_image = transformed_image.unsqueeze(0).to(device)  # 添加批次维度并发送到设备上
+transformed_image = transformed_image.unsqueeze(0).to(device)  # 添加批次维度并发送到设备上 但是好像两个东西
 
 
-sam得到的没问题了
+# sam得到的没问题了
 image_encoder = ImageEncoderViT()
 image_encoder = image_encoder.to(device)
 image_embedding = image_encoder(transformed_image)
-print(image_embedding)
+# print(image_embedding)
 print(image_embedding.shape)
 #存图！
+np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/sam_embedding.npy', image_embedding.cpu().detach())
 
 
 cfg = Config.fromfile(f'/data/hotaru/my_projects/PNS_tmp/prompter/config/pannuke321.py')
 backbone = Backbone(cfg)
 backbone = backbone.to(device)
 prompter_output1,prompter_output2 = backbone(transformed_image)
-print(prompter_output1)
+# print(prompter_output1)
 print(prompter_output1[0].shape)
+print(prompter_output1[1].shape)
+print(prompter_output1[2].shape)
+np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[0].npy', prompter_output1[0].cpu().detach())
+np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[1].npy', prompter_output1[1].cpu().detach())
+np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[2].npy', prompter_output1[2].cpu().detach())
+# np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[3].npy', prompter_output1[3].cpu().detach())
+np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output2.npy', prompter_output2.cpu().detach())

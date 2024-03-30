@@ -4,8 +4,8 @@
 
    ```shell
    python main.py --config pannuke123.py --output_dir pannuke123
-   python main.py --config pannuke213.py --output_dir pannuke123
-   python main.py --config pannuke321.py --output_dir pannuke123
+   python main.py --config pannuke213.py --output_dir pannuke213
+   python main.py --config pannuke321.py --output_dir pannuke321_change_feats3
 
    python main.py --config cpm17.py --output_dir cpm17
    ```

@@ -4,10 +4,9 @@ import copy
 import torch
 import numpy as np
 import torch.nn.functional as F
-from .image_encoder import ImageEncoderViT
 
 from torch import nn
-from .fpn import FPN
+from models.fpn import FPN
 
 
 class Backbone(nn.Module):
@@ -119,24 +118,11 @@ class DPAP2PNet(nn.Module):
 
     def forward(self,
                 images):
-
-        print("调用sam")
-        image_encoder = ImageEncoderViT()
-        image_encoder = image_encoder.to('cuda')
-        image_embeddings = image_encoder(images)
         # extract features 我感觉就在这。。尺寸截图了 b c h w
         (feats, feats1), proposals = self.backbone(images), self.get_aps(images) 
-        print("len feats",len(feats))
-        print("feats[0]",feats[0].shape)
-        print("feats[1]",feats[1].shape)
-        print("feats[2]",feats[2].shape)
-        feats[2] = image_embeddings
-        print("image_embeddings",image_embeddings.shape)
-        # print("feats[3]",feats[3].shape)
-        print("更换feats[3]")
 
         feat_sizes = [torch.tensor(feat.shape[:1:-1], dtype=torch.float, device=proposals.device) for feat in feats]
-        
+
         # DPP
         grid = (2.0 * proposals / self.strides[0] / feat_sizes[0] - 1.0) #跟proposal长得一样的梯度
         roi_features = F.grid_sample(feats[0], grid, mode='bilinear', align_corners=True) #torch.Size([8, 32, 32, 2])
