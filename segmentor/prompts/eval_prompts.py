@@ -13,21 +13,20 @@ def parse_args():
     parser.add_argument('--dataset', default='', help='config file')
     parser.add_argument('--prompt_path', default='', type=str, help='resume from checkpoint')
     parser.add_argument('--csv_path', default='', type=str, help='resume from checkpoint')
-
     opt = parser.parse_args()
 
     return opt
 
 
 #return inst_map,type_map,points,points_labels
-def load_dataset(dataset,file_name):
+def load_dataset(dataset,file_name,folder_path):
     if dataset == 'pannuke':
-        point_data = np.load("/data/hotaru/my_projects/PNS_tmp/segmentor/prompts/pannuke321/"+file_name+".npy")
-        mask_data = np.load("/data/hotaru/my_projects/PNS_tmp/segmentor/datasets/pannuke/Masks/"+file_name+".npy", allow_pickle=True).item()  # 加载npy文件并将字典转换为Python对象
+        point_data = np.load(folder_path+'/'+file_name+".npy")
+        mask_data = np.load("../datasets/pannuke/Masks/"+file_name+".npy", allow_pickle=True).item()  # 加载npy文件并将字典转换为Python对象
         inst_map = mask_data['inst_map']
         type_map = mask_data['type_map']
     elif dataset == 'cpm17':
-        point_data = np.load("/data/hotaru/my_projects/PNS_tmp/segmentor/prompts/cpm17/"+file_name+".npy")
+        point_data = np.load(folder_path+'/'+file_name+".npy")
         mask_data = loadmat("/data/hotaru/my_projects/PNS_tmp/segmentor/datasets/cpm17/test/Labels/"+file_name+".mat")  # 加载npy文件并将字典转换为Python对象
         inst_map = mask_data['inst_map']
         type_map = np.ones_like(inst_map)
@@ -139,7 +138,7 @@ def main():
         writer.writerow(field_names)
         for file_name in file_names:
             file_name = file_name.split('.')[0]
-            inst_map,type_map,points,points_labels = load_dataset(dataset, file_name)
+            inst_map,type_map,points,points_labels = load_dataset(dataset, file_name , folder_path)
             false_points,temp_inst_map, semantic_liantong_map= count_false_points(inst_map,type_map,points,points_labels)
             row = [file_name] + false_points
             writer.writerow(row)
