@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 from typing import Optional, Tuple, Type
 
-from .common import LayerNorm2d, MLPBlock
+from common import LayerNorm2d, MLPBlock
 
 from functools import partial
 

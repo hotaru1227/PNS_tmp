@@ -3,7 +3,7 @@ import wandb
 import math
 import pandas as pd
 import torch
-torch.cuda.set_device(5)
+torch.cuda.set_device(6)
 import torch.nn.functional as F
 from scipy.io import savemat
 from mmengine.config import Config
@@ -276,7 +276,7 @@ def train_on_epoch(
 
         cell_nums = cell_nums.to(device) #torch.Size([16])
 
-        outputs = model(   #here
+        outputs = model(   #here  infer的时候把b重复了cell_num次
             images,
             prompt_points,
             prompt_labels,
