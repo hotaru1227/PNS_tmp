@@ -27,7 +27,7 @@ def load_dataset(dataset,file_name,folder_path):
         type_map = mask_data['type_map']
     elif dataset == 'cpm17':
         point_data = np.load(folder_path+'/'+file_name+".npy")
-        mask_data = loadmat("/data/hotaru/my_projects/PNS_tmp/segmentor/datasets/cpm17/test/Labels/"+file_name+".mat")  # 加载npy文件并将字典转换为Python对象
+        mask_data = loadmat("../datasets/cpm17/test/Labels/"+file_name+".mat")  # 加载npy文件并将字典转换为Python对象
         inst_map = mask_data['inst_map']
         type_map = np.ones_like(inst_map)
     else:

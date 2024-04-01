@@ -66,8 +66,7 @@ def tpfp_default(det_bboxes,
         det_bbox (ndarray): Detected bboxes of this image, of shape (m, 5).
         gt_bboxes (ndarray): GT bboxes of this image, of shape (n, 4).
         gt_bboxes_ignore (ndarray): Ignored gt bboxes of this image,
-            of shape (k, 4). Default: None
-        dis_thr (float): Distance threshold to be considered as matched.
+            of shape (k, 4). Default: None        dis_thr (float): Distance threshold to be considered as matched.
         area_ranges (list[tuple] | None): Range of bbox areas to be
             evaluated, in the format [(min1, max1), (min2, max2), ...].
             Default: None.
