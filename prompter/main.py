@@ -9,7 +9,7 @@ from models.dpa_p2pnet import build_model
 from engine import train_one_epoch, evaluate
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-torch.cuda.set_device(6)
+torch.cuda.set_device(7)
 # os.environ["CUDA_VISIBLE_DEVICES"] = "5,6"
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument("--device", default="cuda", help="device to use for training / testing")
     parser.add_argument("--print-freq", default=5, type=int, help="print frequency")
     parser.add_argument("--use-wandb", action='store_true', help='use wandb for logging')
-    parser.add_argument('--epochs', default=300, type=int, help='number of epochs.')
+    parser.add_argument('--epochs', default=200, type=int, help='number of epochs.')
     parser.add_argument('--warmup_epochs', default=5, type=int, help='number of warmup epochs.')
     parser.add_argument('--clip-grad', type=float, default=0.1,
                         help='Clip gradient norm (default: 0.1)')
@@ -108,6 +108,15 @@ def main():
             drop_last=False
         )
     except FileNotFoundError:
+        print(args.config,"没有valid数据集，直接用train数据集")
+        val_dataset = DataFolder(cfg, 'val')
+        val_dataloader = DataLoader(
+            train_dataset,
+            batch_size=1,
+            num_workers=cfg.data.num_workers,
+            shuffle=False,
+            drop_last=False
+        )
         pass
 
     test_dataset = DataFolder(cfg, 'test')
@@ -208,6 +217,9 @@ def main():
                 checkpoint,
                 f"checkpoint/{args.output_dir}/latest.pth",
             )
+        # 加一个evaluate，用train算，只算det的F1
+        # if args.config == 'cpm17.py':
+
 
         try:
             if epoch >= args.start_epoch:

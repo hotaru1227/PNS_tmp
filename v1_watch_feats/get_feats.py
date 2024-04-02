@@ -10,13 +10,13 @@ from dpa_p2pnet import DPAP2PNet
 from dpa_p2pnet import Backbone
 
 device = torch.device('cuda')
-cfg = Config.fromfile(f'/data/hotaru/my_projects/PNS_tmp/segmentor/config/pannuke321_b.py')
+cfg = Config.fromfile(f'../segmentor/config/cpm17_b.py')
 transform_configs = cfg.data.get('train').transform
 
 
 # print(model)
-file_name = '1_1'
-image_path = "/data/hotaru/my_projects/PNS_tmp/segmentor/datasets/pannuke/Images/"+file_name+".png"
+file_name = 'image_00'
+image_path = "../segmentor/datasets/cpm17/train/Images/"+file_name+".png"
 
 
 image = Image.open(image_path)
@@ -35,15 +35,15 @@ transformed_image = transformed_image.unsqueeze(0).to(device)  # 添加批次维
 
 # sam得到的没问题了
 image_encoder = ImageEncoderViT()
-image_encoder = image_encoder.to(device)
-image_embedding = image_encoder(transformed_image)
+image_encoder = image_encoder.to(device) 
+image_embedding = image_encoder(transformed_image) #想要返回多层次特征图
 # print(image_embedding)
 print(image_embedding.shape)
 #存图！
-np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/sam_embedding.npy', image_embedding.cpu().detach())
+# np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/sam_embedding.npy', image_embedding.cpu().detach())
 
 
-cfg = Config.fromfile(f'/data/hotaru/my_projects/PNS_tmp/prompter/config/pannuke321.py')
+cfg = Config.fromfile(f'../prompter/config/cpm17.py')
 backbone = Backbone(cfg)
 backbone = backbone.to(device)
 prompter_output1,prompter_output2 = backbone(transformed_image)
@@ -51,8 +51,8 @@ prompter_output1,prompter_output2 = backbone(transformed_image)
 print(prompter_output1[0].shape)
 print(prompter_output1[1].shape)
 print(prompter_output1[2].shape)
-np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[0].npy', prompter_output1[0].cpu().detach())
-np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[1].npy', prompter_output1[1].cpu().detach())
-np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[2].npy', prompter_output1[2].cpu().detach())
-# np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[3].npy', prompter_output1[3].cpu().detach())
-np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output2.npy', prompter_output2.cpu().detach())
+# np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[0].npy', prompter_output1[0].cpu().detach())
+# np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[1].npy', prompter_output1[1].cpu().detach())
+# np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[2].npy', prompter_output1[2].cpu().detach())
+# # np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output1[3].npy', prompter_output1[3].cpu().detach())
+# np.save('/data/hotaru/my_projects/PNS_tmp/v1_watch_feats/save_features/prompter_output2.npy', prompter_output2.cpu().detach())
