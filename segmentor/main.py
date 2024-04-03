@@ -3,7 +3,7 @@ import wandb
 import math
 import pandas as pd
 import torch
-torch.cuda.set_device(6)
+torch.cuda.set_device(7)
 import torch.nn.functional as F
 from scipy.io import savemat
 from mmengine.config import Config
@@ -21,12 +21,13 @@ from stats_utils import (
     get_fast_pq,
     get_fast_aji,
     get_dice_1,
+    get_fast_aji_plus,
 
 )
 
 import argparse
 
-
+ 
 def parse_args():
     parser = argparse.ArgumentParser('Cell segmentor')
 
@@ -87,22 +88,22 @@ def main():
     try:
         val_dataset = DataFolder(cfg, mode='val')
         val_dataloader = DataLoader(
-            val_dataset,
+            val_dataset,  #cpm的npy文件复制了train的
             batch_size=1,
             shuffle=False,
             num_workers=cfg.data.num_workers,
             collate_fn=test_collate_fn,
         )
     except FileNotFoundError:
-        #可以这么干吗？但是cpm不validation
-        val_dataset = DataFolder(cfg, mode='val')
-        val_dataloader = DataLoader(
-        test_dataset,
-        batch_size=1,
-        shuffle=False,
-        num_workers=cfg.data.num_workers,
-        collate_fn=test_collate_fn,
-    )
+        #可以这么干吗？但是cpm不validation 没必要了直接复制了cpm的train
+    #     val_dataset = DataFolder(cfg, mode='val')
+    #     val_dataloader = DataLoader( 
+    #     test_dataset,
+    #     batch_size=1,
+    #     shuffle=False,
+    #     num_workers=cfg.data.num_workers,
+    #     collate_fn=test_collate_fn,
+    # )
         pass
 
     test_dataset = DataFolder(cfg, mode='test')
@@ -153,13 +154,14 @@ def main():
         )
 
         model_without_ddp.load_state_dict(checkpoint["model"])
+        # model_without_ddp.load_state_dict(checkpoint)  #vanillaSAM用的这个
 
         if "optimizer" in checkpoint:
             optimizer.load_state_dict(checkpoint["optimizer"])
         if "scheduler" in checkpoint:
             scheduler.load_state_dict(checkpoint["optimizer"])
         if "epoch" in checkpoint:
-            args.start_epoch = checkpoint["epoch"] + 1
+            args.start_epoch = checkpoint["epoch"] + 1  #也就是加上这个可以接着train吧
         if "metrics" in checkpoint:
             print(checkpoint['metrics'], checkpoint['epoch'])
             metric_dict = checkpoint['metrics']
@@ -271,14 +273,14 @@ def train_on_epoch(
         images = images.to(device) #torch.Size([16, 3, 256, 256])
         true_masks = true_masks.to(device) #torch.Size([256, 256])
 
-        prompt_points = prompt_points.to(device) #torch.Size([239, 1, 2])
+        prompt_points = prompt_points.to(device) #torch.Size([239, 1, 2]) 239难道是mask嘛？
         prompt_labels = prompt_labels.to(device) #torch.Size([239, 1])
-
+        
         cell_nums = cell_nums.to(device) #torch.Size([16])
 
         outputs = model(   #here  infer的时候把b重复了cell_num次
             images,
-            prompt_points,
+            prompt_points, 
             prompt_labels,
             cell_nums
         )
@@ -364,6 +366,7 @@ def evaluate(
     nuclei_dq_scores = []
     nuclei_dice_scores = []
     nuclei_aji_scores = []
+    nuclei_aji_plus_scores = []
     tissue_nuclei_pq_scores = [[] for _ in tissue_types]  # tissue_id, category_id
 
     binary_pq_scores = []  # image_id
@@ -372,10 +375,12 @@ def evaluate(
     binary_dq_scores = []
     binary_sq_scores = []
     binary_aji_scores = []
+    binary_aji_plus_scores = []
     binary_dice_scores = []
 
     aji_scores = []
     dice_scores = []
+    aji_plus_scores = []
 
     metric_logger = MetricLogger(delimiter="  ")
     header = f"Test:"
@@ -483,6 +488,7 @@ def evaluate(
                     bsq_tmp = np.nan
                     bdice_tmp = np.nan
                     baji_tmp = np.nan
+                    baji_plus_tmp = np.nan
                 else:
                     [bdq_tmp, bsq_tmp, bpq_tmp], _ = get_fast_pq(
                         remap_label(inst_maps[batch_ind]),  #true
@@ -496,6 +502,10 @@ def evaluate(
                         remap_label(inst_maps[batch_ind]),
                         remap_label(b_inst_map)
                     )
+                    baji_plus_tmp = get_fast_aji_plus(
+                        remap_label(inst_maps[batch_ind]),
+                        remap_label(b_inst_map)
+                    )
                 # 这里是不带类别的所有的指标，先搞这个 这里不append是单个image的，append完就算完了,但是是for循环结束才完的
                 #bqp_tmp是单张
                 #出了for循环 binary才存了所有图的结果，再算mean
@@ -504,6 +514,7 @@ def evaluate(
                 binary_sq_scores.append(bsq_tmp)
                 binary_aji_scores.append(baji_tmp)
                 binary_dice_scores.append(bdice_tmp)
+                binary_aji_plus_scores.append(baji_plus_tmp)
 
                 tissue_binary_pq_scores[tissue_types[test_dataloader.dataset.types[file_ind]]].append(bpq_tmp) #tissue的就先算了
 
@@ -513,6 +524,7 @@ def evaluate(
                 nuclei_type_sq = []
                 nuclei_type_dice = []
                 nuclei_type_aji = []
+                nuclei_type_aji_plus = []
 
                 for c in range(num_classes):  # 5 class 按类别的inst_map score
                     pred_nuclei_instance_class = remap_label(
@@ -528,6 +540,7 @@ def evaluate(
                         msq_tmp = np.nan
                         mdice_tmp = np.nan
                         maji_tmp = np.nan
+                        maji_plus_tmp = np.nan
                     else:
                         [mdq_tmp, msq_tmp, mpq_tmp], _ = get_fast_pq(
                             pred_nuclei_instance_class,
@@ -541,18 +554,24 @@ def evaluate(
                             pred_nuclei_instance_class,
                             target_nuclei_instance_class
                         )
+                        maji_plus_tmp = get_fast_aji_plus(
+                            pred_nuclei_instance_class,
+                            target_nuclei_instance_class
+                        )
                     # 这里按照类别计算了所有的指标，照葫芦画瓢按类别计算一下dice和aji，然后看看pq和dq也给他传过去
                     nuclei_type_pq.append(mpq_tmp)
                     nuclei_type_dq.append(mdq_tmp)
                     nuclei_type_sq.append(msq_tmp)
                     nuclei_type_aji.append(maji_tmp)
                     nuclei_type_dice.append(mdice_tmp)
+                    nuclei_type_aji_plus.append(maji_plus_tmp)
                 # 所有图像的五个类别值
                 nuclei_pq_scores.append(nuclei_type_pq)
                 nuclei_sq_scores.append(nuclei_type_sq)
                 nuclei_dq_scores.append(nuclei_type_dq)
                 nuclei_aji_scores.append(nuclei_type_aji)
                 nuclei_dice_scores.append(nuclei_type_dice)
+                nuclei_aji_plus_scores.append(nuclei_type_aji_plus)
 
                 # 要不全在这里算了然后存csv呢？ 但这个是一张图的结果 但按照这个逻辑就应该按图算指标然后算mean
                 tissue_nuclei_pq_scores[tissue_types[test_dataloader.dataset.types[file_ind]]].append(nuclei_type_pq)
@@ -679,12 +698,23 @@ def evaluate(
                 bpq_tmp = np.nan
                 bdq_tmp = np.nan
                 bsq_tmp = np.nan 
+                baji_tmp = np.nan 
+                baji_plus_tmp  = np.nan 
+                bdice_tmp  = np.nan 
             else:
                 [bdq_tmp, bsq_tmp, bpq_tmp], _ = get_fast_pq(
                     remap_label(inst_maps[0]),
                     remap_label(b_inst_map)
                 )
                 bdice_tmp = get_dice_1(
+                    remap_label(inst_maps[0]),
+                    remap_label(b_inst_map)
+                )
+                baji_plus_tmp = get_fast_aji_plus(
+                    remap_label(inst_maps[0]),
+                    remap_label(b_inst_map)
+                )
+                baji_tmp = get_fast_aji(
                     remap_label(inst_maps[0]),
                     remap_label(b_inst_map)
                 )
@@ -697,14 +727,22 @@ def evaluate(
                 remap_label(inst_maps[0]),
                 remap_label(b_inst_map)
             )
-
+            aji_plus_score = get_fast_aji_plus(
+                remap_label(inst_maps[0]),
+                remap_label(b_inst_map)
+            )
             binary_dq_scores.append(bdq_tmp)
             binary_sq_scores.append(bsq_tmp)
 
             binary_pq_scores.append(bpq_tmp)
+            binary_aji_plus_scores.append(baji_plus_tmp)
+            binary_dice_scores.append(bdice_tmp)
+            binary_aji_scores.append(baji_tmp)
+
+
             aji_scores.append(aji_score)
             dice_scores.append(dice_score)
-
+            aji_plus_scores.append(aji_plus_score)
             excel_info.append(
                 (test_dataloader.dataset.files[file_inds[0]].split("/")[-1],
                  bpq_tmp,
@@ -722,6 +760,7 @@ def evaluate(
     print("dq:",np.nanmean(binary_dq_scores))
     print("sq:",np.nanmean(binary_sq_scores))
     print("pq:",np.nanmean(binary_pq_scores))
+    print("aji_p:",np.nanmean(binary_aji_plus_scores))
     print("检查一下长度：",len(binary_aji_scores))
     print("*"*20)
     if 'pannuke' in test_dataloader.dataset.dataset:  # PanNuke  tissue
@@ -792,12 +831,15 @@ def evaluate(
         sq_scores = np.concatenate(all_gather(binary_sq_scores))
         SQ = np.nanmean(sq_scores)
 
+        aji_plus_scores = np.concatenate(all_gather(binary_aji_plus_scores))
+        AJI_P = np.nanmean(aji_plus_scores)
         metrics = {
             'DICE:': DICE,
             'AJI:': AJI,
             'DQ:' : DQ,
             'SQ:' : SQ,
-            'PQ': PQ
+            'PQ': PQ,
+            'AJI_P':AJI_P,
         }
 
     for k, v in metrics.items():

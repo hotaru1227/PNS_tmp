@@ -7,7 +7,7 @@
    python main.py --config pannuke213.py --output_dir pannuke213
    python main.py --config pannuke321.py --output_dir pannuke321_change_feats3
 
-   python main.py --config cpm17.py --output_dir cpm17
+   python main.py --config cpm17.py --output_dir cpm17/origin_200
    ```
 
 2. 生点
