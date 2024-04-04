@@ -2,11 +2,12 @@ import sys
 import math
 import itertools
 import prettytable as pt
-
+from PIL import Image
 from utils import *
 from tqdm import tqdm
 from eval_map import eval_map
 from collections import OrderedDict
+import torchvision.transforms as transforms
 
 
 def train_one_epoch(
@@ -42,10 +43,34 @@ def train_one_epoch(
         }
 
         with torch.cuda.amp.autocast(enabled=scaler is not None):
-            outputs = model(images)
+            outputs,feats_origin,image_embedding,feats = model(images)
             # 表征就在这儿？
-            loss_dict = criterion(outputs, targets, epoch)
+            loss_dict = criterion(outputs, targets, epoch)  
             losses = sum(loss for loss in loss_dict.values())
+        
+        save_path = "/data/hotaru/projects/PNS_tmp/prompter/checkpoint/cpm17/feature_map_save/"+str(epoch)+"/"
+        os.makedirs(save_path, exist_ok=True)
+        to_pil = transforms.ToPILImage()
+
+
+        # feats_origin_average_feature_map = torch.mean(feats_origin[0], dim=1, keepdim=True)
+        feats_origin_average_feature_map = feats_origin[0][:, 0, :, :]
+        feats_origin_images = [to_pil(feats_origin_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+        for i, feats_origin_image in enumerate(feats_origin_images):
+            save_path1 = f"{data_iter_step}_{i}_feats_origin.png"
+            feats_origin_image.save(save_path+save_path1)
+
+        # image_embedding_average_feature_map = torch.mean(image_embedding[0], dim=1, keepdim=True)
+        # image_embedding_images = [to_pil(image_embedding_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+        # for i, image_embedding_image in enumerate(image_embedding_images):
+        #     save_path1 = f"{data_iter_step}_{i}_image_embedding.png"
+        #     image_embedding_image.save(save_path+save_path1)
+
+        feats_average_feature_map = torch.mean(feats[0], dim=1, keepdim=True)
+        feats_images = [to_pil(feats_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+        for i, feats_image in enumerate(feats_images):
+            save_path1 = f"{data_iter_step}_{i}_feats.png"
+            feats_image.save(save_path+save_path1)
 
         loss_dict_reduced = reduce_dict(loss_dict)
         losses_reduced = sum(loss for loss in loss_dict_reduced.values())

@@ -392,7 +392,7 @@ def predict(
         filtering=False
 ):
     ori_h, ori_w = ori_shape
-    outputs = model(image)
+    outputs,_,_,_ = model(image)
 
     points = outputs['pred_coords'][0].cpu().numpy()
     scores = outputs['pred_logits'][0].softmax(-1).cpu().numpy()

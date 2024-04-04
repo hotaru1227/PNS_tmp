@@ -9,7 +9,7 @@ from models.dpa_p2pnet import build_model
 from engine import train_one_epoch, evaluate
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-torch.cuda.set_device(6)
+torch.cuda.set_device(7)
 # os.environ["CUDA_VISIBLE_DEVICES"] = "5,6"
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -85,6 +85,7 @@ def main():
     device = torch.device(args.device)
 
     model = build_model(cfg).to(device)
+    print(model)
     model_without_ddp = model
 
     train_dataset = DataFolder(cfg, 'train')

@@ -19,7 +19,7 @@ transform_configs = cfg.data.get('train').transform
 
 
 # print(model)
-file_name = 'image_00'
+file_name = 'image_00' 
 # image_path = "../segmentor/datasets/cpm17/train/Images/"+file_name+".png"
 image_path = '/data/hotaru/projects/PNS_tmp/segmentor/datasets/pannuke/Images/1_48.png'
 
