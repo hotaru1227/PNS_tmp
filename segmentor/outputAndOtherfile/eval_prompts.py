@@ -72,6 +72,11 @@ def count_false_points(inst_map,type_map,points,points_labels):
         x,y = int(point[1]),int(point[0])
         label = point_label
         point_is_correct = False # flag
+        H, W = temp_inst_map.shape
+        if x>=W or y >=H: 
+            m_back_count+=1
+            continue
+
         if temp_inst_map[x, y] != 0 and  temp_inst_map[x, y] != -1 and label == type_map[x,y]-1 :  # 2.
             true_counts += 1
             point_is_correct = True        

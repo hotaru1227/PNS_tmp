@@ -60,11 +60,11 @@ def train_one_epoch(
             save_path1 = f"{data_iter_step}_{i}_feats_origin.png"
             feats_origin_image.save(save_path+save_path1)
 
-        # image_embedding_average_feature_map = torch.mean(image_embedding[0], dim=1, keepdim=True)
-        # image_embedding_images = [to_pil(image_embedding_average_feature_map[i].squeeze().cpu()) for i in range(8)]
-        # for i, image_embedding_image in enumerate(image_embedding_images):
-        #     save_path1 = f"{data_iter_step}_{i}_image_embedding.png"
-        #     image_embedding_image.save(save_path+save_path1)
+        image_embedding_average_feature_map = torch.mean(image_embedding[0], dim=1, keepdim=True)
+        image_embedding_images = [to_pil(image_embedding_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+        for i, image_embedding_image in enumerate(image_embedding_images):
+            save_path1 = f"{data_iter_step}_{i}_image_embedding.png"
+            image_embedding_image.save(save_path+save_path1)
 
         feats_average_feature_map = torch.mean(feats[0], dim=1, keepdim=True)
         feats_images = [to_pil(feats_average_feature_map[i].squeeze().cpu()) for i in range(8)]

@@ -6,6 +6,8 @@ import numpy as np
 import torch.nn.functional as F
 from .image_encoder import ImageEncoderViT
 from .pvt_v2 import PyramidVisionTransformerImpr
+from .pvt_v2 import pvt_v2_b2
+from .pvt import PolypPVT
 import torchvision.transforms as transforms
 from torch import nn
 from .fpn import FPN
@@ -86,6 +88,7 @@ class DPAP2PNet(nn.Module):
     def __init__(
             self,
             backbone,
+            pvt_encoder,
             num_levels,
             num_classes,
             dropout=0.1,
@@ -98,6 +101,7 @@ class DPAP2PNet(nn.Module):
         """
         super().__init__()
         self.backbone = backbone
+        self.pvt_encoder = pvt_encoder
         self.get_aps = AnchorPoints(space)
         self.num_levels = num_levels
         self.hidden_dim = hidden_dim
@@ -126,14 +130,16 @@ class DPAP2PNet(nn.Module):
         # image_embeddings = image_encoder(images)
         # extract features 我感觉就在这。。尺寸截图了 b c h w
         (feats_origin, feats1), proposals = self.backbone(images), self.get_aps(images) 
+        feats = feats_origin
         # feats[2] += image_embeddings
         #这里加一个对一张图像保存64*64的特征图吧feats[0] 获取imagename和路径
         # pvt_encoder = PyramidVisionTransformerImpr()
         # pvt_encoder = pvt_encoder.to('cuda')
         # image_embedding = pvt_encoder(images)
         # feats = feats_origin+image_embedding
-
-        feats = feats_origin
+        pvt_embedding = self.pvt_encoder(images)
+        for i in range(len(feats_origin)):
+            feats[i] = feats_origin[i]+pvt_embedding[i]
         # feats0 = torch.mean(feats[0], dim=1)
 
         feat_sizes = [torch.tensor(feat.shape[:1:-1], dtype=torch.float, device=proposals.device) for feat in feats]
@@ -165,20 +171,23 @@ class DPAP2PNet(nn.Module):
                 self.mask_head(feats1), size=images.shape[2:], mode='bilinear', align_corners=True)
         }
         #新加一个返回,返回多层特征金字塔
-        return output,feats_origin,feats1,feats
+        return output,feats_origin,pvt_embedding,feats
 
 
 def build_model(cfg):
     backbone = Backbone(cfg)
-
+    pvt_test = PolypPVT().cuda()
     model = DPAP2PNet(
         backbone,
+        pvt_test,
         num_levels=cfg.prompter.neck.num_outs,
         num_classes=cfg.data.num_classes,
         dropout=cfg.prompter.dropout,
         space=cfg.prompter.space,
         hidden_dim=cfg.prompter.hidden_dim
     )
+
+    
 
     return model
  

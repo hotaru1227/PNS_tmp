@@ -2,8 +2,11 @@ import sys
 import wandb
 import math
 import pandas as pd
+import cv2
 import torch
-torch.cuda.set_device(7)
+import torchvision.transforms as transforms
+from PIL import Image,ImageDraw
+torch.cuda.set_device(6)
 import torch.nn.functional as F
 from scipy.io import savemat
 from mmengine.config import Config
@@ -32,6 +35,7 @@ def parse_args():
     parser = argparse.ArgumentParser('Cell segmentor')
 
     parser.add_argument('--config', default='pannuke123.py', help='config file')
+    parser.add_argument('--output_path', default='', help='config file')
     parser.add_argument('--resume', default='', type=str, help='resume from checkpoint')
     parser.add_argument("--eval", action='store_true', help='only evaluate')
     parser.add_argument("--overlap", default=64, type=int, help="overlapping pixels")
@@ -174,7 +178,7 @@ def main():
             group=args.group_name,
             config=vars(args)
         )
-
+    
     if args.eval:
         return evaluate(
             args,
@@ -433,8 +437,8 @@ def evaluate(
 
             model_time = time.time() - model_time
             metric_logger.update(model_time=model_time)
-
-            for batch_ind, file_ind in enumerate(file_inds):
+ 
+            for batch_ind, file_ind in enumerate(file_inds): 
 
                 c_inst_map = np.zeros((num_classes, *inst_maps.shape[-2:])) #(5, 256, 256)
                 b_inst_map = np.zeros_like(inst_maps[0]) #(256, 256)
@@ -681,6 +685,63 @@ def evaluate(
             all_boxes = all_boxes[keep_prior]
             all_scores = all_scores[keep_prior]
             all_masks = [all_masks[ind] for ind in np.where(keep_prior)[0]]
+
+            '''
+            一些可视化------------------------------------------------------------------
+            '''
+            output_filename = test_dataloader.dataset.files[file_inds].split(".")[0].split("/")[-1] 
+            
+            sub_prompt_points[0]
+            pred_instance_map = np.zeros_like(all_masks[0], dtype=np.uint8)
+
+            # 把all_mask的array按照实例保存
+            for i, mask in enumerate(all_masks, start=1):
+                pred_instance_map[mask] = i
+
+            # 着色
+            pred_instance_colored = cv2.applyColorMap(pred_instance_map, cv2.COLORMAP_JET)
+            # 在图像上标记点
+            # for point in sub_prompt_points:好奇怪哦，那sub是干什么的呢
+            for point in prompt_points:
+                x, y = point[0]
+                x, y = int(x.item()), int(y.item())  
+                cv2.circle(pred_instance_colored, (x, y), radius=2, color=(255,255,255), thickness=-1) 
+
+            # 将图像转换为PIL格式
+            pred_instance_image = Image.fromarray(cv2.cvtColor(pred_instance_colored, cv2.COLOR_BGR2RGB))
+            to_pil = transforms.ToPILImage()
+            image_save = to_pil(images[0].cpu())#0是batch = 1
+
+            inst_map_tensor = torch.from_numpy(inst_maps)
+            # gt_mask = to_pil(inst_map_tensor[0].cpu())
+            gt_mask_colored = cv2.applyColorMap(inst_map_tensor[0].cpu().numpy().astype(np.uint8), cv2.COLORMAP_JET)
+            for point in prompt_points:
+                x, y = point[0]
+                x, y = int(x.item()), int(y.item())  
+                cv2.circle(gt_mask_colored, (x, y), radius=2, color=(255,255,255), thickness=-1) 
+            gt_instance_image = Image.fromarray(cv2.cvtColor(gt_mask_colored, cv2.COLOR_BGR2RGB))
+
+
+            print("images.shape",images.shape)
+            print("pred_instance_image.shape",pred_instance_map.shape)
+            print("gt_instance_image.shape",inst_map_tensor.shape)
+            print("gt point数量：",len(all_masks))
+            print("sub_prompt_points:",len(sub_prompt_points))
+            print("prompt_points:",len(prompt_points))
+            print("实例图已保存为",output_filename)
+
+            width = max(image_save.width, gt_instance_image.width, pred_instance_image.width)
+            height = image_save.height + gt_instance_image.height + pred_instance_image.height
+            combined_image = Image.new("RGB", (width, height))
+            combined_image.paste(image_save, (0, 0))
+            combined_image.paste(gt_instance_image, (0, image_save.height))
+            combined_image.paste(pred_instance_image, (0, image_save.height + gt_instance_image.height))
+            os.makedirs(args.output_path, exist_ok=True)
+            combined_image.save(args.output_path + output_filename + '.png')
+
+
+            # -----------------------------------------------------------------------
+            # -----------------------------------------------------------------------
 
             # second-aspect NMS
             keep_by_nms = batched_nms(

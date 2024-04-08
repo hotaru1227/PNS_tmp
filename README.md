@@ -16,7 +16,7 @@
    python predict_prompts.py --config pannuke123.py --resume checkpoint/pannuke123/best.pth
    python predict_prompts.py --config pannuke213.py --resume checkpoint/pannuke213/best.pth
    python predict_prompts.py --config pannuke321.py --resume checkpoint/pannuke321/best.pth
-   python predict_prompts.py --config cpm17.py --resume checkpoint/cpm17/latest.pth
+   python predict_prompts.py --config cpm17.py --resume checkpoint/cpm17/test_output_image/best.pth
    ```
 
 3. train the segmentor
@@ -35,7 +35,7 @@
 
    ```shell
    cd segmentor
-   torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17_b/latest.pth --eval --config cpm17_b.py
+   torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_test_del/
    python main.py --resume checkpoint/cpm17/latest.pth --eval --config cpm17_b.py
    python main.py --resume checkpoint/pannuke321_b/latest.pth --eval --config pannuke321_b.py
 
