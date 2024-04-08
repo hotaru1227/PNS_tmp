@@ -7,7 +7,7 @@
    python main.py --config pannuke213.py --output_dir pannuke213
    python main.py --config pannuke321.py --output_dir pannuke321_change_feats3
 
-   python main.py --config cpm17.py --output_dir cpm17/test_output_image
+   python main.py --config cpm17.py --output_dir cpm17/origin_feats
    ```
 
 2. 生点
@@ -35,7 +35,7 @@
 
    ```shell
    cd segmentor
-   torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_test_del/
+   torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_output_gtpoint/
    python main.py --resume checkpoint/cpm17/latest.pth --eval --config cpm17_b.py
    python main.py --resume checkpoint/pannuke321_b/latest.pth --eval --config pannuke321_b.py
 

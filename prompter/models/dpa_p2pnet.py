@@ -125,21 +125,14 @@ class DPAP2PNet(nn.Module):
     def forward(self,
                 images):
 
-        # image_encoder = ImageEncoderViT()
-        # image_encoder = image_encoder.to('cuda')
-        # image_embeddings = image_encoder(images)
-        # extract features 我感觉就在这。。尺寸截图了 b c h w
         (feats_origin, feats1), proposals = self.backbone(images), self.get_aps(images) 
         feats = feats_origin
-        # feats[2] += image_embeddings
-        #这里加一个对一张图像保存64*64的特征图吧feats[0] 获取imagename和路径
-        # pvt_encoder = PyramidVisionTransformerImpr()
-        # pvt_encoder = pvt_encoder.to('cuda')
-        # image_embedding = pvt_encoder(images)
-        # feats = feats_origin+image_embedding
-        pvt_embedding = self.pvt_encoder(images)
-        for i in range(len(feats_origin)):
-            feats[i] = feats_origin[i]+pvt_embedding[i]
+
+
+        pvt_embedding = feats_origin
+        # pvt_embedding = self.pvt_encoder(images)
+        # for i in range(len(feats_origin)): #pannuke是3
+        #     feats[i] = feats_origin[i]+pvt_embedding[i]
         # feats0 = torch.mean(feats[0], dim=1)
 
         feat_sizes = [torch.tensor(feat.shape[:1:-1], dtype=torch.float, device=proposals.device) for feat in feats]
@@ -186,8 +179,5 @@ def build_model(cfg):
         space=cfg.prompter.space,
         hidden_dim=cfg.prompter.hidden_dim
     )
-
-    
-
     return model
  
