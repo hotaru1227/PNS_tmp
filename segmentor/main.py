@@ -755,7 +755,7 @@ def evaluate(
             for iid, ind in enumerate(order):
                 b_inst_map[all_masks[ind]] = iid + 1
 
-            if len(np.unique(inst_maps[0])) == 1 or len(b_inst_map)==1:
+            if len(np.unique(inst_maps[0])) == 1 or len(b_inst_map)==1 or len(b_inst_map)==0 or len(np.unique(inst_maps[0])) == 0:
                 bpq_tmp = np.nan
                 bdq_tmp = np.nan
                 bsq_tmp = np.nan 
@@ -775,15 +775,15 @@ def evaluate(
                     remap_label(inst_maps[0]),
                     remap_label(b_inst_map)
                 )
-                baji_tmp = get_fast_aji(
-                    remap_label(inst_maps[0]),
-                    remap_label(b_inst_map)
-                )
+                # baji_tmp = get_fast_aji(
+                #     remap_label(inst_maps[0]),
+                #     remap_label(b_inst_map)
+                # )
 
-            aji_score = get_fast_aji(
-                remap_label(inst_maps[0]),
-                remap_label(b_inst_map)
-            )
+            # aji_score = get_fast_aji(
+            #     remap_label(inst_maps[0]),
+            #     remap_label(b_inst_map)
+            # )
             dice_score = get_dice_1(
                 remap_label(inst_maps[0]),
                 remap_label(b_inst_map)
@@ -798,16 +798,16 @@ def evaluate(
             binary_pq_scores.append(bpq_tmp)
             binary_aji_plus_scores.append(baji_plus_tmp)
             binary_dice_scores.append(bdice_tmp)
-            binary_aji_scores.append(baji_tmp)
+            # binary_aji_scores.append(baji_tmp)
 
 
-            aji_scores.append(aji_score)
+            # aji_scores.append(aji_score)
             dice_scores.append(dice_score)
             aji_plus_scores.append(aji_plus_score)
             excel_info.append(
                 (test_dataloader.dataset.files[file_inds[0]].split("/")[-1],
                  bpq_tmp,
-                 aji_score,
+                #  aji_score,
                  len(np.unique(inst_maps[batch_inds[0]])) - 1,
                  cell_nums[batch_inds[0]].item())
             )
