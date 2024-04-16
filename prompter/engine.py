@@ -63,41 +63,18 @@ def train_one_epoch(
                 save_path1 = f"{data_iter_step}_{i}_feats_origin.png"
                 feats_origin_image.save(save_path+save_path1)
 
-            # image_embedding_average_feature_map = torch.mean(image_embedding[0], dim=1, keepdim=True)
-            # image_embedding_images = [to_pil(image_embedding_average_feature_map[i].squeeze().cpu()) for i in range(8)]
-            # for i, image_embedding_image in enumerate(image_embedding_images):
-            #     save_path1 = f"{data_iter_step}_{i}_image_embedding.png"
-            #     image_embedding_image.save(save_path+save_path1)
+            image_embedding_average_feature_map = torch.mean(image_embedding[0], dim=1, keepdim=True)
+            image_embedding_images = [to_pil(image_embedding_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+            for i, image_embedding_image in enumerate(image_embedding_images):
+                save_path1 = f"{data_iter_step}_{i}_image_embedding.png"
+                image_embedding_image.save(save_path+save_path1)
 
-            # feats_average_feature_map = torch.mean(feats[0], dim=1, keepdim=True)
-            # feats_images = [to_pil(feats_average_feature_map[i].squeeze().cpu()) for i in range(8)]
-            # for i, feats_image in enumerate(feats_images):
-            #     save_path1 = f"{data_iter_step}_{i}_feats.png"
-            #     feats_image.save(save_path+save_path1)
+            feats_average_feature_map = torch.mean(feats[0], dim=1, keepdim=True)
+            feats_images = [to_pil(feats_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+            for i, feats_image in enumerate(feats_images):
+                save_path1 = f"{data_iter_step}_{i}_feats.png"
+                feats_image.save(save_path+save_path1)
 
-            import cv2
-            # pred_masks = outputs['pred_masks'][:, 0].cpu().detach().numpy()  # 将张量移动到CPU并转换为NumPy数组
-
-            for i, pred_mask in enumerate(outputs['pred_masks']):
-                binary_mask = torch.where(pred_mask > 0.5, torch.tensor(1), torch.tensor(0))  # 将概率图转换为二进制掩码
-
-                # 假设 original_image 是原始图像的张量表示，这里使用随机生成的示例图像
-                image = images[data_iter_step]  # 获取原始图像
-                image = np.transpose(image.cpu(), (1, 2, 0))  # 将图像的通道维度移动到最后一个维度
-
-                binary_mask_np = binary_mask.cpu().numpy().astype(np.uint8) * 255
-
-                # binary_mask_cv = cv2.cvtColor(binary_mask_np, cv2.COLOR_GRAY2BGR)
-                binary_mask_gray = binary_mask_np.astype(np.uint8)
-                # 使用 cv2.applyColorMap 方法
-                colored_mask = cv2.applyColorMap(binary_mask_gray, cv2.COLORMAP_JET)
-
-                # 明确指定输出数组的数据类型为与输入图像相同的类型
-                overlayed_image = cv2.addWeighted(image.astype(np.float32), 0.7, colored_mask.astype(np.float32), 0.3, 0, dtype=cv2.CV_32F)
-
-                # 可视化结果
-                save_path1 = f"{data_iter_step}_{i}_image_with_output_mask.png"
-                cv2.imwrite(save_path1, overlayed_image)
            
         
 

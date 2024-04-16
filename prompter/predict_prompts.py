@@ -21,7 +21,7 @@ model = build_model(cfg)
 ckpt = torch.load(f'{args.resume}', map_location='cpu')
 pretrained_state_dict = ckpt['model']
 
-model.load_state_dict(pretrained_state_dict)
+model.load_state_dict(pretrained_state_dict,strict=False)
 model.eval()
 model.to(device)
 
@@ -73,9 +73,9 @@ mkdir(f'../segmentor/prompts/{dataset}')
 test_files = np.load(f'../segmentor/datasets/{dataset}_test_files.npy')
 process_files(test_files)
 
-try:
-    val_files = np.load(f'../segmentor/datasets/{dataset}_val_files.npy')
-    process_files(val_files)
+# try:
+#     val_files = np.load(f'../segmentor/datasets/{dataset}_val_files.npy')
+#     process_files(val_files)
 
-except FileNotFoundError:
-    pass
+# except FileNotFoundError:
+#     pass

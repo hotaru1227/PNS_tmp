@@ -109,7 +109,7 @@ class ImageEncoderViT(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.patch_embed(x) # 16,3,256,256 → 16,16,16,768  B C H W -> B H W C
-        if self.pos_embed is not None:
+        if self.pos_embed is not None: #这里是作者加的
             pos_embed = F.interpolate(
                 self.pos_embed.permute(0, 3, 1, 2),
                 size=x.shape[1:3],

@@ -130,10 +130,10 @@ class DPAP2PNet(nn.Module):
 
 
         pvt_embedding = feats_origin
-        # pvt_embedding = self.pvt_encoder(images)
-        # for i in range(len(feats_origin)): #pannuke是3
-        #     feats[i] = feats_origin[i]+pvt_embedding[i]
-        # feats0 = torch.mean(feats[0], dim=1)
+        pvt_embedding = self.pvt_encoder(images)
+        for i in range(len(feats_origin)): #pannuke是3
+            feats[i] = feats_origin[i]+pvt_embedding[i]
+        feats0 = torch.mean(feats[0], dim=1)
 
         feat_sizes = [torch.tensor(feat.shape[:1:-1], dtype=torch.float, device=proposals.device) for feat in feats]
         

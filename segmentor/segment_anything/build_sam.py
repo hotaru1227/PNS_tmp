@@ -73,7 +73,7 @@ def _build_sam(
             norm_layer=partial(torch.nn.LayerNorm, eps=1e-6),
             num_heads=encoder_num_heads,
             patch_size=vit_patch_size,
-            qkv_bias=True,
+            qkv_bias=True,  #这个是火的意思吗？
             use_rel_pos=True,
             global_attn_indexes=encoder_global_attn_indexes,
             window_size=14,

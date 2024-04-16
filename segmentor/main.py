@@ -123,9 +123,17 @@ def main():
 
     model = getattr(segment_anything, f"build_sam_vit_{cfg.segmentor.type[-1].lower()}")(cfg)
     model.to(device)
+    from torchsummary import summary
+    # 打印模型的结构和参数数量
+    print("查看模型大小：")
+    summary(model, input_size=(3, 500, 500))
+    watch_image_encoder = model.image_encoder
+    print("查看image encoder大小：")
+    summary(watch_image_encoder, input_size=(3, 500, 500))
+
 
     for param in model.prompt_encoder.parameters(): #是这样冻结的吗？
-        param.requires_grad = False
+        param.requires_grad = True
 
     model_without_ddp = model
     if args.distributed:
@@ -188,7 +196,7 @@ def main():
             cfg.data.post.iou_threshold,
             args.tta,
             device,
-            cfg.data,
+            # cfg.data,
         )
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -220,7 +228,7 @@ def main():
                 metric_dict = evaluate(
                     args,
                     model,
-                    val_dataloader,
+                    test_dataloader, #这里原本是val
                     cfg.data.num_classes,
                     cfg.data.post.iou_threshold,
                     args.tta,
@@ -331,7 +339,7 @@ def evaluate(
         iou_threshold,
         tta,
         device,
-        data_info,
+        # data_info,
 ):
     model.eval()
 

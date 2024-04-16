@@ -40,14 +40,14 @@ class PromptEncoder(nn.Module):
         self.embed_dim = embed_dim
         self.input_image_size = input_image_size
         self.image_embedding_size = image_embedding_size
-        self.pe_layer = PositionEmbeddingRandom(embed_dim // 2)
+        self.pe_layer = PositionEmbeddingRandom(embed_dim // 2) # position encoding gaussian matrix
 
         self.num_point_embeddings: int = 4  # pos/neg point + 2 box corners
         point_embeddings = [nn.Embedding(1, embed_dim) for i in range(self.num_point_embeddings)]
         self.point_embeddings = nn.ModuleList(point_embeddings)
         self.not_a_point_embed = nn.Embedding(1, embed_dim)
 
-        self.mask_input_size = (4 * image_embedding_size[0], 4 * image_embedding_size[1])
+        self.mask_input_size = (4 * image_embedding_size[0], 4 * image_embedding_size[1])  #mask input??? 0：64 1：64 len(2)
         self.mask_downscaling = nn.Sequential(
             nn.Conv2d(1, mask_in_chans // 4, kernel_size=2, stride=2),
             LayerNorm2d(mask_in_chans // 4),
@@ -86,7 +86,7 @@ class PromptEncoder(nn.Module):
             labels = torch.cat([labels, padding_label], dim=1)
 
         point_embedding = self.pe_layer.forward_with_coords(points, self.input_image_size)
-        try:
+        try:  #这里加了try except
             point_embedding[labels == -1] = 0.0
         except IndexError as _:
             print(point_embedding.shape)
