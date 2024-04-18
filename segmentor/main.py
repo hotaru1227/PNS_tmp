@@ -41,9 +41,9 @@ def parse_args():
     parser.add_argument("--overlap", default=64, type=int, help="overlapping pixels")
 
     parser.add_argument("--start-epoch", default=0, type=int, metavar="N", help="start epoch")
-    parser.add_argument('--epochs', default=30, type=int)
+    parser.add_argument('--epochs', default=300, type=int)
     parser.add_argument("--print-freq", default=10, type=int, help="print frequency")
-    parser.add_argument("--start-eval", default=5, type=int)
+    parser.add_argument("--start-eval", default=30, type=int) #5？
 
     parser.add_argument('--output_dir', default='', type=str)
     parser.add_argument('--seed', default=42, type=int)
@@ -191,7 +191,7 @@ def main():
         return evaluate(
             args,
             model,
-            test_dataloader,
+            test_dataloader, #这个是实际的test，没问题
             cfg.data.num_classes,
             cfg.data.post.iou_threshold,
             args.tta,
@@ -228,14 +228,14 @@ def main():
                 metric_dict = evaluate(
                     args,
                     model,
-                    test_dataloader, #这里原本是val
+                    val_dataloader, #这里原本是val，train的过程中，cpm17需要给一个train数据集的gt
                     cfg.data.num_classes,
                     cfg.data.post.iou_threshold,
                     args.tta,
                     device
                 )
 
-                mPQ = metric_dict['mPQ']
+                mPQ = metric_dict['PQ']
                 if max_mPQ < mPQ:
                     max_mPQ = mPQ
                     save_on_master(
@@ -597,7 +597,7 @@ def evaluate(
 
         else:  # applicable when the resolution of input image is larger than 256
             # 确认一下哪个数据集会用这里
-            print("else!over 256")
+            # print("else!over 256")
             assert len(images) == 1, 'batch size must be 1'
 
             crop_boxes = crop_with_overlap(
@@ -730,13 +730,13 @@ def evaluate(
             gt_instance_image = Image.fromarray(cv2.cvtColor(gt_mask_colored, cv2.COLOR_BGR2RGB))
 
 
-            print("images.shape",images.shape)
-            print("pred_instance_image.shape",pred_instance_map.shape)
-            print("gt_instance_image.shape",inst_map_tensor.shape)
-            print("gt point数量：",len(all_masks))
-            print("sub_prompt_points:",len(sub_prompt_points))
-            print("prompt_points:",len(prompt_points))
-            print("实例图已保存为",output_filename)
+            # print("images.shape",images.shape)
+            # print("pred_instance_image.shape",pred_instance_map.shape)
+            # print("gt_instance_image.shape",inst_map_tensor.shape)
+            # print("gt point数量：",len(all_masks))
+            # print("sub_prompt_points:",len(sub_prompt_points))
+            # print("prompt_points:",len(prompt_points))
+            # print("实例图已保存为",output_filename)
 
             width = max(image_save.width, gt_instance_image.width, pred_instance_image.width)
             height = image_save.height + gt_instance_image.height + pred_instance_image.height
@@ -918,13 +918,13 @@ def evaluate(
     for _ in all_gather(excel_info):
         gathered_excel_info.extend(_)
 
-    if is_main_process():
-        print("save!")
-        pd.DataFrame(
-            data=gathered_excel_info,
-            # columns=['Imagee Name', 'bDice', 'bAji','bdq', 'bsQ',  'bPQ', 'mDice', 'mAji','mDQ','mSQ','mPQ','GT Num', 'PD Num']
-            columns=['Imagee Name', 'PQ', 'AJI', 'GT Num', 'PD Num']
-        ).to_csv(f'{test_dataloader.dataset.dataset}.csv')
+    # if is_main_process():
+    #     print("save!")
+    #     pd.DataFrame(
+    #         data=gathered_excel_info,
+    #         # columns=['Imagee Name', 'bDice', 'bAji','bdq', 'bsQ',  'bPQ', 'mDice', 'mAji','mDQ','mSQ','mPQ','GT Num', 'PD Num']
+    #         columns=['Imagee Name', 'PQ', 'AJI', 'GT Num', 'PD Num']
+    #     ).to_csv(f'{test_dataloader.dataset.dataset}.csv')
 
     return metrics
 

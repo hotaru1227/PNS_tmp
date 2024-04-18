@@ -10,7 +10,7 @@ data = dict(
     name='cpm17',
     num_classes=1,
     num_mask_per_img=25,
-    batch_size_per_gpu=8,
+    batch_size_per_gpu=16,
     num_workers=8,
     num_neg_prompt=0,
     train=dict(transform=[

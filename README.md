@@ -26,7 +26,7 @@
    ```shell
    cd segmentor
    torchrun --nproc_per_node=4 main.py --config pannuke123_b.py --output_dir pannuke123_b
-   python main.py --config cpm17_b.py --output_dir cpm17/fire_prompt_encoder_30 --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_fire_prompt_encoder
+   python main.py --config cpm17_b.py --output_dir cpm17/cpm_add_epoch/ --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_add_epoch/
    torchrun --nproc_per_node=4 main.py --config pannuke213_b.py --output_dir pannuke213_b
    torchrun --nproc_per_node=4 main.py --config pannuke321_b.py --output_dir pannuke321_b
    ```

@@ -38,7 +38,6 @@ def load_dataset(dataset,file_name,folder_path):
     points_labels = point_data[:, 2]
     return inst_map,type_map,points,points_labels
 
-#return [num_gt_instances,num_points,true_counts,m_back_count,m_front_count,l_single_count,l_multi_count,cls_false_count,all_false_num],temp_inst_map,semantic_liantong_map
 def count_false_points(inst_map,type_map,points,points_labels):
     #初始化所需变量
     temp_inst_map = inst_map.copy()
@@ -51,8 +50,8 @@ def count_false_points(inst_map,type_map,points,points_labels):
     true_counts = 0      # 2. 正确总数
     m_back_count = 0     # 3. 背景多检
     m_front_count = 0    # 4. 前景多检
-    l_single_count = 0   # 5. 单独漏检
-    l_multi_count = 0    # 6. 粘连漏检
+    l_single_count = 0   # 5. 单独漏检 需要改
+    l_multi_count = 0    # 6. 粘连漏检 需要改
     cls_false_count = 0  # 7. 类别错误
     all_false_num = 0    # 8. 错误总数
 
@@ -72,11 +71,6 @@ def count_false_points(inst_map,type_map,points,points_labels):
         x,y = int(point[1]),int(point[0])
         label = point_label
         point_is_correct = False # flag
-        H, W = temp_inst_map.shape
-        if x>=W or y >=H: 
-            m_back_count+=1
-            continue
-
         if temp_inst_map[x, y] != 0 and  temp_inst_map[x, y] != -1 and label == type_map[x,y]-1 :  # 2.
             true_counts += 1
             point_is_correct = True        
@@ -108,25 +102,43 @@ def count_false_points(inst_map,type_map,points,points_labels):
                         temp_inst_map[i, j] = -1  
                     if liantong_map[i,j] == temp_liantong_id:
                         binary_semantic_map[i, j] = 0
-
+    
     semantic_liantong_num, semantic_liantong_map = cv2.connectedComponents(binary_semantic_map) 
-    l_single_count = semantic_liantong_num -1   # 5
-    l_multi_count = num_gt_instances - true_counts - cls_false_count - l_single_count  # 6
-    if l_multi_count < 0 : l_multi_count = 0
+    # l_single_count = semantic_liantong_num -1   # 5
+    # l_multi_count = num_gt_instances - true_counts - cls_false_count - l_single_count  # 6
+    #按理说直接在这里数就行，问题就在于有没有负数 
+    # binary_semantic_map = binary_semantic_map.astype(np.int16)
+    print(np.unique(semantic_liantong_map))
+    binary_num = np.max(semantic_liantong_map)  # 获取连通区域数目
+    current_unique_count = []
+    current_region_save = []
+    for i in range(1, binary_num + 1):
+        # 将当前连通区域标记为1，其余区域标记为0
+        current_region = np.where(semantic_liantong_map == i, 1, 0)  #不会晒出来背景。
+                
+        current_region_save.append(current_region)
+        current_unique = len(np.unique(current_region * temp_inst_map))-1
+        if current_unique == 1:
+            l_single_count += 1
+        else:
+            l_multi_count += current_unique
+
+    
+    l_multi_count += (len(np.unique(temp_inst_map))-1)  -  semantic_liantong_num
 
     all_false_num = m_back_count + m_front_count + l_single_count + l_multi_count + cls_false_count
-    # print("0. gt总数",num_gt_instances)
-    # print("1. points总数",num_points)
-    # print("2. 正确总数",true_counts)
-    # print("3. 背景多检",m_back_count)
-    # print("4. 前景多检",m_front_count)
-    # print("5. 单独漏检",l_single_count)
-    # print("6. 粘连漏检",l_multi_count)
-    # print("7. 类别错误",cls_false_count)
-    # print("8. 错误总数",all_false_num)
+    print("0. gt总数",num_gt_instances)
+    print("1. points总数",num_points)
+    print("2. 正确总数",true_counts)
+    print("3. 背景多检",m_back_count)
+    print("4. 前景多检",m_front_count)
+    print("5. 单独漏检",l_single_count)
+    print("6. 粘连漏检",l_multi_count)
+    print("7. 类别错误",cls_false_count)
+    print("8. 错误总数",all_false_num)
+    print("check points-多检+漏检=gt?",num_points-m_back_count-m_front_count+l_single_count+l_multi_count)
 
     return [num_gt_instances,num_points,true_counts,m_back_count,m_front_count,l_single_count,l_multi_count,cls_false_count,all_false_num],temp_inst_map,semantic_liantong_map
-
 
 
 def main():
