@@ -109,7 +109,8 @@ class DataFolder(Dataset):
             chosen_pids = np.random.choice(
                 unique_pids,
                 # min(cell_num, self.num_mask_per_img),
-                max(cell_num,int(cell_num*0.6)),
+                # max(cell_num,int(cell_num*0.6)),
+                cell_num,
                 replace=False
             )
 

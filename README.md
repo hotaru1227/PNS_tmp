@@ -7,7 +7,7 @@
    python main.py --config pannuke213.py --output_dir pannuke213
    python main.py --config pannuke321.py --output_dir pannuke321_change_feats3
 
-   python main.py --config cpm17.py --output_dir cpm17/add_pvt_retrain_4_15
+   python main.py --config cpm17.py --output_dir cpm17/origin_watch_image/
    ```
 
 2. 生点
@@ -26,7 +26,7 @@
    ```shell
    cd segmentor
    torchrun --nproc_per_node=4 main.py --config pannuke123_b.py --output_dir pannuke123_b
-   python main.py --config cpm17_b.py --output_dir cpm17/cpm_add_epoch/ --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_add_epoch/
+   python main.py --config cpm17_b.py --output_dir cpm17/cpm_cell_num/ --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_cell_num/
    torchrun --nproc_per_node=4 main.py --config pannuke213_b.py --output_dir pannuke213_b
    torchrun --nproc_per_node=4 main.py --config pannuke321_b.py --output_dir pannuke321_b
    ```

@@ -6,7 +6,7 @@ import cv2
 import torch
 import torchvision.transforms as transforms
 from PIL import Image,ImageDraw
-torch.cuda.set_device(6)
+torch.cuda.set_device(7)
 import torch.nn.functional as F
 from scipy.io import savemat
 from mmengine.config import Config

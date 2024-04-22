@@ -1,4 +1,4 @@
-torchrun --nproc_per_node=4 main.py --resume /data/hotaru/projects/PNS_tmp/segmentor/checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_test_pvt_4_17/
+torchrun --nproc_per_node=4 main.py --resume /data/hotaru/projects/PNS_tmp/segmentor/checkpoint/cpm17/cpm_cell_num/best.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_cell_num_infer_4_18/
 #torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17_l/latest.pth --eval --config cpm17_l.py
 #torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17_h/latest.pth --eval --config cpm17_h.py
 
