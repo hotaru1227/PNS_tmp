@@ -22,7 +22,8 @@ def train_one_epoch(
         epoch,
         device,
         model_ema=None,
-        scaler=None
+        scaler=None,
+        save_middle_path_name='tmp'
 ):
     model.train()
     criterion.train()
@@ -55,28 +56,28 @@ def train_one_epoch(
         
         # 一些可视化
         # '''
-        # if epoch%20 == 0 :
-        #     save_path = "/data/hotaru/projects/PNS_tmp/prompter/checkpoint/cpm17/feature_map_save/origin/"+str(epoch)+"/"
-        #     os.makedirs(save_path, exist_ok=True)
-        #     to_pil = transforms.ToPILImage()
+        if epoch%20 == 0 :
+            save_path = "/data/hotaru/projects/PNS_tmp/prompter/checkpoint/cpm17/feature_map_save/"+save_middle_path_name+"/"+str(epoch)+"/"
+            os.makedirs(save_path, exist_ok=True)
+            to_pil = transforms.ToPILImage()
 
-        #     feats_origin_average_feature_map = feats_origin[0][:, 0, :, :]
-        #     feats_origin_images = [to_pil(feats_origin_average_feature_map[i].squeeze().cpu()) for i in range(8)]
-        #     for i, feats_origin_image in enumerate(feats_origin_images):
-        #         save_path1 = f"{data_iter_step}_{i}_feats_origin.png"
-        #         feats_origin_image.save(save_path+save_path1)
+            feats_origin_average_feature_map = feats_origin[0][:, 0, :, :]
+            feats_origin_images = [to_pil(feats_origin_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+            for i, feats_origin_image in enumerate(feats_origin_images):
+                save_path1 = f"{data_iter_step}_{i}_feats_origin.png"
+                feats_origin_image.save(save_path+save_path1)
 
-        #     image_embedding_average_feature_map = torch.mean(image_embedding[0], dim=1, keepdim=True)
-        #     image_embedding_images = [to_pil(image_embedding_average_feature_map[i].squeeze().cpu()) for i in range(8)]
-        #     for i, image_embedding_image in enumerate(image_embedding_images):
-        #         save_path1 = f"{data_iter_step}_{i}_image_embedding.png"
-        #         image_embedding_image.save(save_path+save_path1)
+            image_embedding_average_feature_map = torch.mean(image_embedding[0], dim=1, keepdim=True)
+            image_embedding_images = [to_pil(image_embedding_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+            for i, image_embedding_image in enumerate(image_embedding_images):
+                save_path1 = f"{data_iter_step}_{i}_image_embedding.png"
+                image_embedding_image.save(save_path+save_path1)
 
-        #     feats_average_feature_map = torch.mean(feats[0], dim=1, keepdim=True)
-        #     feats_images = [to_pil(feats_average_feature_map[i].squeeze().cpu()) for i in range(8)]
-        #     for i, feats_image in enumerate(feats_images):
-        #         save_path1 = f"{data_iter_step}_{i}_feats.png"
-        #         feats_image.save(save_path+save_path1)
+            feats_average_feature_map = torch.mean(feats[0], dim=1, keepdim=True)
+            feats_images = [to_pil(feats_average_feature_map[i].squeeze().cpu()) for i in range(8)]
+            for i, feats_image in enumerate(feats_images):
+                save_path1 = f"{data_iter_step}_{i}_feats.png"
+                feats_image.save(save_path+save_path1)
 
            
         
@@ -124,6 +125,7 @@ def evaluate(
         device,
         epoch=0,
         calc_map=False,
+        save_middle_path_name='tmp'
 ):
     model.eval()
     class_names = test_loader.dataset.classes
@@ -202,13 +204,14 @@ def evaluate(
         # 所有点：pd_points，里面不匹配的点：unmatched_points为1的索引gt没有被匹配，gt点：gt_points
         # mask:当前轮预测的mask：pd_masks
         # epoch√ images gt_mask上画点  masks(512,512) vs pd_masks (512,512)上画点 vs gt_mask和pd_mask画一起
-        save_point_mask_path = '/data/hotaru/projects/PNS_tmp/prompter/outputAndOtherfile/middle_save/cpm_origin/'+str(epoch)+"/"+str(data_iter_step)
-        os.makedirs(save_point_mask_path,exist_ok=True)
-        image1 = draw_points_on_image(masks, pd_points, gt_points, unmatched_points ,save_path=save_point_mask_path+"_gtM.png")
-        image2 = draw_points_on_image(np.squeeze(images).permute(1, 2, 0).cpu(), pd_points,   gt_points, unmatched_points,save_path=save_point_mask_path+"_img.png")
-        image3 = draw_points_on_image(pd_masks, pd_points,  gt_points, unmatched_points,save_path=save_point_mask_path+"_pdM.png")
-        image4 = overlay_masks(np.squeeze(images).permute(1, 2, 0).cpu(), masks, pd_masks,alpha=0.5,save_path=save_point_mask_path+"_img&M.png" )
-        # save_four_images_as_grid(image1, image2, image3, image4,save_path=save_point_mask_path+str(data_iter_step)+".png")
+        if  data_iter_step%8 == 0:
+            save_point_mask_path = '/data/hotaru/projects/PNS_tmp/prompter/outputAndOtherfile/middle_save/'+save_middle_path_name+'/'+str(epoch)+"/"
+            os.makedirs(save_point_mask_path,exist_ok=True)
+            draw_points_on_image(masks, pd_points, gt_points, unmatched_points ,save_path=save_point_mask_path+str(data_iter_step)+"_gtM.png")
+            draw_points_on_image(np.squeeze(images).permute(1, 2, 0).cpu(), pd_points,   gt_points, unmatched_points,save_path=save_point_mask_path+str(data_iter_step)+"_img.png")
+            draw_points_on_image(pd_masks, pd_points,  gt_points, unmatched_points,save_path=save_point_mask_path+str(data_iter_step)+"_pdM.png")
+            overlay_masks(np.squeeze(images).permute(1, 2, 0).cpu(), masks, pd_masks,alpha=0.5,save_path=save_point_mask_path+str(data_iter_step)+"_img&M.png" )
+       
 
     if get_world_size() > 1:
         dist.all_reduce(det_rn, op=dist.ReduceOp.SUM)
@@ -265,9 +268,15 @@ def evaluate(
     return metrics, table.get_string()
 
 def draw_points_on_image(image, points,gt_points,unmatch_bool,save_path=None):
+    if len(unmatch_bool) != len(gt_points):
+        print("维度不匹配！")
+        # plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
+        return 
     # 提取坐标
     x_coords = points[:, 0]
     y_coords = points[:, 1]
+    plt.figure()
+    plt.imshow(image, cmap='gray')  # 显示图像
     
     unmatch_points = gt_points[unmatch_bool == 1]
     match_points = gt_points[unmatch_bool == 0]
@@ -278,8 +287,8 @@ def draw_points_on_image(image, points,gt_points,unmatch_bool,save_path=None):
     gt_match_y = match_points[:,1]
 
     # 绘制点到图像上
-    plt.figure()
-    plt.imshow(image, cmap='gray')  # 显示图像
+    # plt.figure()
+    # plt.imshow(image, cmap='gray')  # 显示图像
     plt.scatter(x_coords, y_coords, marker='*', color='blue')  # 绘制点
     plt.scatter(gt_unmatch_x, gt_unmatch_y, marker='x', color='r')  # 绘制gt中没有匹配到的点
     plt.scatter(gt_match_x, gt_match_y, marker='o', color='green')  # 绘制gt中匹配到的点

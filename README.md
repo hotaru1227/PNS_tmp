@@ -7,7 +7,7 @@
    python main.py --config pannuke213.py --output_dir pannuke213
    python main.py --config pannuke321.py --output_dir pannuke321_change_feats3
 
-   python main.py --config cpm17.py --output_dir cpm17/origin_watch_image/
+   python main.py --config cpm17.py --output_dir cpm17/4_22_origin_watch_middle/  --save_middle_path_name 4_22_origin_watch_middle
    ```
 
 2. 生点
@@ -16,7 +16,7 @@
    python predict_prompts.py --config pannuke123.py --resume checkpoint/pannuke123/best.pth
    python predict_prompts.py --config pannuke213.py --resume checkpoint/pannuke213/best.pth
    python predict_prompts.py --config pannuke321.py --resume checkpoint/pannuke321/best.pth
-   python predict_prompts.py --config cpm17.py --resume /data/hotaru/projects/PNS_tmp/prompter/checkpoint/cpm17/origin_300/best.pth
+   python predict_prompts.py --config cpm17.py --resume /data/hotaru/projects/PNS_tmp/prompter/checkpoint/cpm17/4_22_origin_watch_middle/best.pth
    ```
 
 3. train the segmentor
@@ -35,14 +35,20 @@
 
    ```shell
    cd segmentor
-   torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_output_gtpoint/
-   python main.py --resume /data/hotaru/projects/PNS_tmp/segmentor/checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py
+   torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_4_22_origin/
+   python main.py --resume /data/hotaru/projects/PNS_tmp/segmentor/checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py 
    python main.py --resume checkpoint/pannuke321_b/latest.pth --eval --config pannuke321_b.py
 
    ```
    
+5. 评价点
 
+  ```shell
+   cd segmentor/outputAndOtherfile
+   python eval_prompts.py  --dataset cpm17 --prompt_path  /data/hotaru/projects/PNS_tmp/segmentor/prompts/cpm17_4_22_origin_ --csv_path /data/hotaru/projects/PNS_tmp/segmentor/prompts/cpm17_4_22_origin_.csv
+   
 
+   ```
 
 ## Dataset_path
 

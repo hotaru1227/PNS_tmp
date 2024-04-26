@@ -4,10 +4,14 @@ import copy
 import torch
 import numpy as np
 import torch.nn.functional as F
-
-from torch import nn
-from models.fpn import FPN
 from .image_encoder import ImageEncoderViT
+from .pvt_v2 import PyramidVisionTransformerImpr
+from .pvt_v2 import pvt_v2_b2
+from .pvt import PolypPVT
+import torchvision.transforms as transforms
+from torch import nn
+from .fpn import FPN
+
 
 class Backbone(nn.Module):
     def __init__(
@@ -84,7 +88,7 @@ class DPAP2PNet(nn.Module):
     def __init__(
             self,
             backbone,
-            # sam_img_encoder,
+            pvt_encoder,
             num_levels,
             num_classes,
             dropout=0.1,
@@ -97,7 +101,7 @@ class DPAP2PNet(nn.Module):
         """
         super().__init__()
         self.backbone = backbone
-        # self.sam_img_encoder = sam_img_encoder
+        self.pvt_encoder = pvt_encoder
         self.get_aps = AnchorPoints(space)
         self.num_levels = num_levels
         self.hidden_dim = hidden_dim
@@ -120,26 +124,19 @@ class DPAP2PNet(nn.Module):
 
     def forward(self,
                 images):
-        # extract features 我感觉就在这。。尺寸截图了 b c h w
-        (feats, feats1), proposals = self.backbone(images), self.get_aps(images) 
-        # img_embedding = self.sam_img_encoder(images)
-        # embedding = []
-        embedding = feats
-        # embedding = [tensor.cuda() for tensor in embedding]
-        feats_origin = feats
-        conv0 = nn.ConvTranspose2d(256, 256, kernel_size=4, stride=4, padding=0).cuda() 
-        conv1 = nn.ConvTranspose2d(256, 256, kernel_size=2, stride=2, padding=0).cuda()  
-        conv3 = nn.Conv2d(256, 256, kernel_size=2, stride=2, padding=0).cuda() 
-        # embedding.append(conv0(img_embedding)) # torch.Size([8, 256, 128, 128])
-        # embedding.append(conv1(img_embedding)) #torch.Size([8, 256, 64, 64])
-        # embedding.append(img_embedding)         # torch.Size([8, 256, 32, 32])
-        # embedding.append(conv3(img_embedding))  # torch.Size([8, 256, 16, 16])
-        # feats[0]+=embedding[0]
-        # feats[1]+=embedding[1]
-        # feats[2]+=embedding[2]
-        # feats[3]+=embedding[3]
-        feat_sizes = [torch.tensor(feat.shape[:1:-1], dtype=torch.float, device=proposals.device) for feat in feats]
 
+        (feats_origin, feats1), proposals = self.backbone(images), self.get_aps(images) 
+        feats = feats_origin
+
+
+        pvt_embedding = feats_origin
+        pvt_embedding = self.pvt_encoder(images)
+        for i in range(len(feats_origin)): #pannuke是3
+            feats[i] = feats_origin[i]+pvt_embedding[i]
+        feats0 = torch.mean(feats[0], dim=1)
+
+        feat_sizes = [torch.tensor(feat.shape[:1:-1], dtype=torch.float, device=proposals.device) for feat in feats]
+        
         # DPP
         grid = (2.0 * proposals / self.strides[0] / feat_sizes[0] - 1.0) #跟proposal长得一样的梯度
         roi_features = F.grid_sample(feats[0], grid, mode='bilinear', align_corners=True) #torch.Size([8, 32, 32, 2])
@@ -166,31 +163,21 @@ class DPAP2PNet(nn.Module):
             'pred_masks': F.interpolate(
                 self.mask_head(feats1), size=images.shape[2:], mode='bilinear', align_corners=True)
         }
-
-        return output,feats_origin,embedding,feats
+        #新加一个返回,返回多层特征金字塔
+        return output,feats_origin,pvt_embedding,feats
 
 
 def build_model(cfg):
     backbone = Backbone(cfg)
-    # sam_img_encoder = ImageEncoderViT().cuda()
-    # checkpoint = torch.load(
-    #     '/data/hotaru/projects/PNS_tmp/segmentor/checkpoint/cpm17/cpm_cell_num/best.pth',
-    #     map_location="cpu"
-    # )
-    # for name, param in sam_img_encoder.named_parameters():
-    #     if 'image_encoder.'+name in checkpoint["model"]:
-    #         param_data = checkpoint["model"]['image_encoder.'+name]
-    #         param.data.copy_(param_data)
-
+    pvt_test = PolypPVT().cuda()
     model = DPAP2PNet(
         backbone,
-        # sam_img_encoder,
+        pvt_test,
         num_levels=cfg.prompter.neck.num_outs,
         num_classes=cfg.data.num_classes,
         dropout=cfg.prompter.dropout,
         space=cfg.prompter.space,
         hidden_dim=cfg.prompter.hidden_dim
     )
-
     return model
  

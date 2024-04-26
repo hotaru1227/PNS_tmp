@@ -9,7 +9,7 @@ from models.dpa_p2pnet import build_model
 from engine import train_one_epoch, evaluate
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-torch.cuda.set_device(6)
+torch.cuda.set_device(7)
 # os.environ["CUDA_VISIBLE_DEVICES"] = "5,6"
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument('--config', default='pannuke123.py', type=str)
     parser.add_argument('--run-name', default=None, type=str, help='wandb run name')
     parser.add_argument('--group-name', default=None, type=str, help='wandb group name')
-
+    parser.add_argument('--save_middle_path_name', default=None, type=str, help='middle_img_path')
     parser.add_argument(
         "--opts",
         help="Modify config options by adding 'KEY VALUE' pairs.",
@@ -85,7 +85,7 @@ def main():
     device = torch.device(args.device)
 
     model = build_model(cfg).to(device)
-    print(model)
+    # print(model)
     model_without_ddp = model
 
     train_dataset = DataFolder(cfg, 'train')
@@ -138,7 +138,8 @@ def main():
             model,
             test_dataloader,
             device,
-            calc_map=True
+            calc_map=True,
+            save_middle_path_name = args.save_middle_path_name
         )
         return
 
@@ -196,7 +197,8 @@ def main():
             epoch,
             device,
             model_ema,
-            scaler
+            scaler,
+            save_middle_path_name = args.save_middle_path_name
         )
 
         if args.output_dir:
@@ -230,6 +232,7 @@ def main():
                     val_dataloader,
                     device,
                     epoch,
+                    save_middle_path_name = args.save_middle_path_name
                 )
 
                 log_info.update(dict(zip(["Det Pre", "Det Rec", "Det F1"], metrics['Det'])))
