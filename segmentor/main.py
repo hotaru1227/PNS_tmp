@@ -372,7 +372,8 @@ def evaluate(
         'Dead': 4,
         'Epithelial': 5,
     }
-
+    save_frame_data = [] #保存表格用的
+    
     nuclei_pq_scores = []  # image_id, category_id
     nuclei_sq_scores = []
     nuclei_dq_scores = []
@@ -599,7 +600,7 @@ def evaluate(
             # 确认一下哪个数据集会用这里
             # print("else!over 256")
             assert len(images) == 1, 'batch size must be 1'
-
+            
             crop_boxes = crop_with_overlap(
                 images[0],
                 *(model.module.image_encoder.img_size if args.distributed else model.image_encoder.img_size,) * 2,
@@ -783,15 +784,15 @@ def evaluate(
                     remap_label(inst_maps[0]),
                     remap_label(b_inst_map)
                 )
-                # baji_tmp = get_fast_aji(
-                #     remap_label(inst_maps[0]),
-                #     remap_label(b_inst_map)
-                # )
+                baji_tmp = get_fast_aji(
+                    remap_label(inst_maps[0]),
+                    remap_label(b_inst_map)
+                )
 
-            # aji_score = get_fast_aji(
-            #     remap_label(inst_maps[0]),
-            #     remap_label(b_inst_map)
-            # )
+            aji_score = get_fast_aji(
+                remap_label(inst_maps[0]),
+                remap_label(b_inst_map)
+            )
             dice_score = get_dice_1(
                 remap_label(inst_maps[0]),
                 remap_label(b_inst_map)
@@ -806,10 +807,10 @@ def evaluate(
             binary_pq_scores.append(bpq_tmp)
             binary_aji_plus_scores.append(baji_plus_tmp)
             binary_dice_scores.append(bdice_tmp)
-            # binary_aji_scores.append(baji_tmp)
+            binary_aji_scores.append(baji_tmp)
 
 
-            # aji_scores.append(aji_score)
+            aji_scores.append(aji_score)
             dice_scores.append(dice_score)
             aji_plus_scores.append(aji_plus_score)
             excel_info.append(
@@ -819,8 +820,14 @@ def evaluate(
                  len(np.unique(inst_maps[batch_inds[0]])) - 1,
                  cell_nums[batch_inds[0]].item())
             )
+            # print(output_filename , bdice_tmp ," " ,baji_tmp," ",bdq_tmp," ",bsq_tmp," ",bpq_tmp," ",baji_plus_tmp)
+            save_frame_data.append([output_filename,bdice_tmp, baji_tmp, bdq_tmp, bsq_tmp, bpq_tmp, baji_plus_tmp])
 
     # 到这里循环完了所有的图↑
+    csv_filename = 'cpm_per_img_score.csv'
+    # 将 DataFrame 写入 CSV 文件
+    df = pd.DataFrame(save_frame_data, columns=["image","bdice_tmp", "baji_tmp", "bdq_tmp", "bsq_tmp", "bpq_tmp", "baji_plus_tmp"])
+    df.to_csv(csv_filename, index=False)
     print("binary指标："+"*"*10)
     # print("检查一下长度：",len(binary_aji_scores))
     # print("检查一下形状：",binary_dice_scores.shape)
@@ -830,6 +837,7 @@ def evaluate(
     print("sq:",np.nanmean(binary_sq_scores))
     print("pq:",np.nanmean(binary_pq_scores))
     print("aji_p:",np.nanmean(binary_aji_plus_scores))
+
     print("检查一下长度：",len(binary_aji_scores))
     print("*"*20)
     if 'pannuke' in test_dataloader.dataset.dataset:  # PanNuke  tissue

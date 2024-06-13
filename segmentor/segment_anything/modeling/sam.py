@@ -17,7 +17,8 @@ from .prompt_encoder import PromptEncoder
 from .common import LayerNorm2d
 
 from utils import point_nms
-
+from PIL import Image
+import matplotlib.pyplot as plt
 
 class Sam(nn.Module):
     mask_threshold: float = 0.0
@@ -74,6 +75,49 @@ class Sam(nn.Module):
     ):
         # image_embeddings, outputs = self.image_encoder(images)
         image_embeddings = self.image_encoder(images) #torch.Size([16, 256, 16, 16])  #infer:1,256,16,16
+
+        reference_img = Image.open("/data/hotaru/projects/PNS_tmp/segmentor/datasets/cpm17/reference/cropped_image.jpg") 
+        reference_mask = Image.open("/data/hotaru/projects/PNS_tmp/segmentor/datasets/cpm17/reference/cropped_binary.png") 
+        np_mask = np.array(reference_mask) 
+        tensor_mask = torch.from_numpy(np_mask) #
+
+        np_img = np.array(reference_img)   # 将PIL Image对象转换为numpy数组，并指定数据类型为uint8（0-255）  
+        tensor_img = torch.from_numpy(np_img.astype(np.float32) / 255.0)  # 如果需要，将numpy数组中的值缩放到0-1的范围（PyTorch通常期望输入是浮点数且范围在0-1）  
+        tensor_img = (tensor_img * 5) - 2
+        # 添加批次维度，并调整维度顺序以匹配PyTorch的NCHW（批次大小, 通道, 高度, 宽度）格式  
+        # 注意：PyTorch期望通道数在第一个维度之后，但在numpy数组中是最后一个维度  
+        tensor_img = tensor_img.permute(2, 0, 1).unsqueeze(0)  # NCHW  
+        # 确保tensor的数据类型是torch.float32（这通常是深度学习模型所期望的）  
+        tensor_img = tensor_img.to(torch.float32)  
+        reference_embedding = self.image_encoder(tensor_img.cuda())
+
+        image_embeddings_flat = image_embeddings.view(1,256, -1)[0]
+        reference_embedding_flat = reference_embedding.view(1,256, -1)[0]
+        S = reference_embedding_flat @ image_embeddings_flat.t()  # ns*N, N
+        C = (1 - S) / 2  # distance
+
+        # S_forward = S[tensor_mask.flatten().bool()]
+        def visualize_matrix(matrix, title, filename):
+            plt.figure(figsize=(8, 6))
+            plt.imshow(matrix.cpu(), cmap='viridis')
+            plt.colorbar()
+            plt.title(title)
+            plt.xlabel('Index')
+            plt.ylabel('Index')
+            plt.savefig(filename)
+            plt.close()
+        visualize_matrix(image_embeddings_flat, 'Image Embeddings', 'image_embeddings.png')
+        visualize_matrix(reference_embedding_flat, 'Reference Embedding', 'reference_embedding.png')
+        visualize_matrix(S, 'Similarity Matrix S', 'similarity_matrix.png')
+        visualize_matrix(C, 'Distance Matrix C', 'distance_matrix.png')
+        # ref_masks_pool = F.avg_pool2d(masks, (64, 64))
+        # S_forward = S[ref_masks_pool.flatten().bool()]
+        # from scipy.optimize import linear_sum_assignment
+        # indices_forward = linear_sum_assignment(S_forward.cpu(), maximize=True)
+        # indices_forward = [torch.as_tensor(index, dtype=torch.int64, device=self.device) for index in indices_forward]
+        # sim_scores_f = S_forward[indices_forward[0], indices_forward[1]]
+        
+
 
         # if only_det:
         #     return outputs
@@ -161,6 +205,7 @@ class Sam(nn.Module):
         padw = self.image_encoder.img_size - w
         x = F.pad(x, (0, padw, 0, padh))  # 填充右边和下边
         return x
+    
 
 
 # Define block

@@ -35,9 +35,13 @@
 
    ```shell
    cd segmentor
-   torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_4_22_origin/
-   python main.py --resume /data/hotaru/projects/PNS_tmp/segmentor/checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py 
-   python main.py --resume checkpoint/pannuke321_b/latest.pth --eval --config pannuke321_b.py
+   torchrun --nproc_per_node=4 main.py --resume checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_add_reference_Test/  
+   
+   python main.py --resume /data/hotaru/projects/PNS_tmp/segmentor/checkpoint/cpm17/cpm17_b.pth --eval --config cpm17_b.py --output_path /data/hotaru/projects/PNS_tmp/segmentor/outputAndOtherfile/cpm_add_reference_Test/
+
+
+
+
 
    ```
    
