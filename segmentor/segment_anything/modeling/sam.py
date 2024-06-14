@@ -19,6 +19,9 @@ from .common import LayerNorm2d
 from utils import point_nms
 from PIL import Image
 import matplotlib.pyplot as plt
+from torchvision import transforms
+import cv2
+from scipy.optimize import linear_sum_assignment
 
 class Sam(nn.Module):
     mask_threshold: float = 0.0
@@ -76,12 +79,15 @@ class Sam(nn.Module):
         # image_embeddings, outputs = self.image_encoder(images)
         image_embeddings = self.image_encoder(images) #torch.Size([16, 256, 16, 16])  #infer:1,256,16,16
 
-        reference_img = Image.open("/data/hotaru/projects/PNS_tmp/segmentor/datasets/cpm17/reference/cropped_image.jpg") 
-        reference_mask = Image.open("/data/hotaru/projects/PNS_tmp/segmentor/datasets/cpm17/reference/cropped_binary.png") 
-        np_mask = np.array(reference_mask) 
-        tensor_mask = torch.from_numpy(np_mask) #
+        reference_img = Image.open("/data/hotaru/projects/PNS_tmp/segmentor/datasets/cpm17/reference_04/cropped_image.jpg") 
+        reference_mask = Image.open("/data/hotaru/projects/PNS_tmp/segmentor/datasets/cpm17/reference_04/cropped_binary.png") 
+        new_size = (256, 256)
+        resized_ref_img = reference_img.resize(new_size)
 
-        np_img = np.array(reference_img)   # 将PIL Image对象转换为numpy数组，并指定数据类型为uint8（0-255）  
+        resize_transform = transforms.Resize((16,16))
+        resized_tensor_mask = resize_transform(torch.from_numpy(np.array(reference_mask)).unsqueeze(0).unsqueeze(0)).squeeze(0).squeeze(0)
+
+        np_img = np.array(resized_ref_img)   # 将PIL Image对象转换为numpy数组，并指定数据类型为uint8（0-255）  
         tensor_img = torch.from_numpy(np_img.astype(np.float32) / 255.0)  # 如果需要，将numpy数组中的值缩放到0-1的范围（PyTorch通常期望输入是浮点数且范围在0-1）  
         tensor_img = (tensor_img * 5) - 2
         # 添加批次维度，并调整维度顺序以匹配PyTorch的NCHW（批次大小, 通道, 高度, 宽度）格式  
@@ -93,29 +99,30 @@ class Sam(nn.Module):
 
         image_embeddings_flat = image_embeddings.view(1,256, -1)[0]
         reference_embedding_flat = reference_embedding.view(1,256, -1)[0]
-        S = reference_embedding_flat @ image_embeddings_flat.t()  # ns*N, N
+        S = reference_embedding_flat.t() @ image_embeddings_flat  
         C = (1 - S) / 2  # distance
 
-        # S_forward = S[tensor_mask.flatten().bool()]
-        def visualize_matrix(matrix, title, filename):
-            plt.figure(figsize=(8, 6))
-            plt.imshow(matrix.cpu(), cmap='viridis')
-            plt.colorbar()
-            plt.title(title)
-            plt.xlabel('Index')
-            plt.ylabel('Index')
-            plt.savefig(filename)
-            plt.close()
-        visualize_matrix(image_embeddings_flat, 'Image Embeddings', 'image_embeddings.png')
-        visualize_matrix(reference_embedding_flat, 'Reference Embedding', 'reference_embedding.png')
-        visualize_matrix(S, 'Similarity Matrix S', 'similarity_matrix.png')
-        visualize_matrix(C, 'Distance Matrix C', 'distance_matrix.png')
-        # ref_masks_pool = F.avg_pool2d(masks, (64, 64))
-        # S_forward = S[ref_masks_pool.flatten().bool()]
-        # from scipy.optimize import linear_sum_assignment
-        # indices_forward = linear_sum_assignment(S_forward.cpu(), maximize=True)
-        # indices_forward = [torch.as_tensor(index, dtype=torch.int64, device=self.device) for index in indices_forward]
-        # sim_scores_f = S_forward[indices_forward[0], indices_forward[1]]
+        S_forward = S[resized_tensor_mask.flatten().bool()]
+        resized_S_forward = cv2.resize( np.array(S_forward.cpu()), (256,256), interpolation=cv2.INTER_LINEAR) #因为hw是16*16，最后留下的chanel一定不足256，简单做一个插值试试
+        
+        S_forward_selected_embedding = torch.from_numpy(resized_S_forward).view(-1, 16, 16).unsqueeze(0)
+
+        # def visualize_matrix(matrix, title, filename):
+        #     plt.figure(figsize=(8, 6))
+        #     plt.imshow(matrix.cpu(), cmap='viridis')
+        #     plt.colorbar()
+        #     plt.title(title)
+        #     plt.xlabel('Index')
+        #     plt.ylabel('Index')
+        #     plt.savefig(filename)
+        #     plt.close()
+        # visualize_matrix(image_embeddings_flat, 'Image Embeddings', 'image_embeddings.png')
+        # visualize_matrix(reference_embedding_flat, 'Reference Embedding', 'reference_embedding.png')
+        # visualize_matrix(S, 'Similarity Matrix S', 'similarity_matrix.png')
+        # visualize_matrix(C, 'Distance Matrix C', 'distance_matrix.png')
+
+
+
         
 
 
@@ -132,13 +139,21 @@ class Sam(nn.Module):
                 boxes=None,
                 masks=None,
             )
+            tmp_shape = dense_embeddings.shape[0]
+            tmp_embedding =  S_forward_selected_embedding.cuda().expand(tmp_shape, -1, -1, -1)/200
+
+            # tensor_min = torch.min(tmp_embedding)
+            # tensor_max = torch.max(tmp_embedding)
+
+            # # 归一化到 [-1, 1] 区间
+            # tensor_normalized = 2 * (tmp_embedding - tensor_min) / (tensor_max - tensor_min) - 1
 
             low_res_masks, iou_predictions = self.mask_decoder(
             # low_res_masks, iou_predictions, cls_predictions = self.mask_decoder(
                 image_embeddings=image_embeddings,  #torch.Size([16, 256, 16, 16])
                 image_pe=self.prompt_encoder.get_dense_pe(), #torch.Size([1, 256, 16, 16])
                 sparse_prompt_embeddings=sparse_embeddings,
-                dense_prompt_embeddings=dense_embeddings,
+                dense_prompt_embeddings=tmp_embedding,
                 cell_nums=cell_nums, #torch.Size([16])
                 multimask_output=self.multimask
             )
