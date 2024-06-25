@@ -7,7 +7,7 @@
    python main.py --config pannuke213.py --output_dir pannuke213
    python main.py --config pannuke321.py --output_dir pannuke321_change_feats3
 
-   python main.py --config cpm17.py --output_dir cpm17/4_22_origin_watch_middle/  --save_middle_path_name 4_22_origin_watch_middle
+   python main.py --config cpm17.py --output_dir cpm17/del/  --save_middle_path_name del
    ```
 
 2. 生点

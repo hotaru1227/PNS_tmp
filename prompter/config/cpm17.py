@@ -19,7 +19,7 @@ prompter = dict(
 data = dict(
     name='cpm17',
     num_classes=1,
-    batch_size_per_gpu=8,
+    batch_size_per_gpu=2,
     num_workers=8,
     train=dict(transform=[
         dict(type='RandomCrop', height=500, width=500, p=1),
